@@ -226,7 +226,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               final d = await showDatePicker(
                 context: context,
                 initialDate: _date ?? now,
-                firstDate: DateTime(now.year - 1),
+                // 編輯很舊的紀錄時，最早日期要能涵蓋它，不然 date picker 會 assert 失敗
+                firstDate: _date != null && _date!.isBefore(DateTime(now.year - 1))
+                    ? DateTime(_date!.year, _date!.month, _date!.day)
+                    : DateTime(now.year - 1),
                 lastDate: now,
               );
               if (d != null) setState(() => _date = d);

@@ -68,8 +68,11 @@ final billsDueSoonProvider = _q<List<BillDue>>((s) => s.bills.dueSoon());
 final paymentMethodsProvider = _q<List<PaymentMethod>>((s) => s.bills.paymentMethods());
 final paymentUsageProvider = _q<List<PaymentMethodUsage>>((s) => s.bills.paymentMethodUsage());
 
-final currentMonthProvider = Provider<String>(
-    (ref) => monthKey(ref.watch(servicesProvider).ctx.now()));
+/// 本月。跟著資料版本重算，APP 開著跨月時（回到前景會 bump）才會更新。
+final currentMonthProvider = Provider<String>((ref) {
+  ref.watch(dataVersionProvider);
+  return monthKey(ref.watch(servicesProvider).ctx.now());
+});
 
 final monthSummaryProvider = FutureProvider.family<MonthSummary, String>((ref, month) {
   ref.watch(dataVersionProvider);
