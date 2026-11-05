@@ -1,5 +1,5 @@
 name: money_pet_app
-description: "A new Flutter project."
+description: "錢寵：記帳養寵物，省錢換獎勵。"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   flutter_riverpod: ^3.4.3
   flutter_secure_storage: ^11.2.0

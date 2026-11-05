@@ -113,6 +113,10 @@ class InventoryService {
     final today = ctx.now();
     final slot = dailyShop(today).firstWhere((s) => s.slot == slotIndex);
     await ctx.db.transaction((txn) async {
+      final insane = await sumInt(txn,
+          'SELECT COUNT(*) FROM pet_status s JOIN pets p ON p.id = s.pet_id '
+          'WHERE p.is_active = 1 AND s.is_insane = 1');
+      if (insane > 0) throw const UserError('寵物失控中，商店暫停營業……');
       final exists = await txn.query('shop_purchases',
           where: 'date = ? AND slot = ?', whereArgs: [dateKey(today), slotIndex]);
       if (exists.isNotEmpty) throw const UserError('今天已經買過這個了');

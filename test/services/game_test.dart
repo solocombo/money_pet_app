@@ -130,6 +130,12 @@ void main() {
       expect(t.completed, isTrue);
     });
 
+    test('寵物失控時商店暫停營業', () async {
+      await giveCoins(10000);
+      await s.ctx.db.update('pet_status', {'is_insane': 1, 'san': 10});
+      expect(() => s.inventory.buy(0), throwsA(isA<UserError>()));
+    });
+
     test('賣出道具換金幣', () async {
       await s.ctx.db.insert('inventory', {'item_id': 'unagi_don', 'quantity': 2});
       final got = await s.inventory.sell('unagi_don');
