@@ -60,8 +60,14 @@ Future<AppServices> _seed(FakeClock clock) async {
   await s.ledger.addExpense(category: Category.drinks, amount: 65, occurredAt: DateTime(2026, 5, 9, 15));
   await s.ledger.addExpense(category: Category.publicTransport, amount: 30, occurredAt: DateTime(2026, 5, 10, 8));
   await s.ledger.addExpense(category: Category.books, amount: 380, savedAmount: 38, note: '理財入門', occurredAt: DateTime(2026, 5, 10, 11));
-  await s.ctx.db.insert('inventory', {'item_id': 'unagi_don', 'quantity': 1});
-  await s.ctx.db.insert('inventory', {'item_id': 'lavender_tea', 'quantity': 2});
+  await s.ctx.db.rawInsert('INSERT INTO inventory VALUES(?, ?) ON CONFLICT(item_id) DO UPDATE SET quantity = excluded.quantity', ['unagi_don', 1]);
+  await s.ctx.db.rawInsert('INSERT INTO inventory VALUES(?, ?) ON CONFLICT(item_id) DO UPDATE SET quantity = excluded.quantity', ['onigiri', 3]);
+  await s.ctx.db.rawInsert('INSERT INTO inventory VALUES(?, ?) ON CONFLICT(item_id) DO UPDATE SET quantity = excluded.quantity', ['vitamin', 1]);
+  await s.ledger.addExpense(category: Category.leisure, amount: 450, occurredAt: DateTime(2026, 5, 3, 20));
+  await s.ledger.addExpense(category: Category.dailyGoods, amount: 260, occurredAt: DateTime(2026, 5, 4, 19));
+  await s.ledger.addExpense(category: Category.dining, amount: 3200, occurredAt: DateTime(2026, 4, 12, 12));
+  await s.ledger.addIncome(category: IncomeCategory.salary, amount: 32000, occurredAt: DateTime(2026, 4, 5, 10));
+  await s.ctx.db.rawInsert('INSERT INTO inventory VALUES(?, ?) ON CONFLICT(item_id) DO UPDATE SET quantity = excluded.quantity', ['lavender_tea', 2]);
   await s.ctx.db.insert('item_collection', {'item_id': 'unagi_don', 'first_obtained_at': 0});
   await s.ctx.db.insert('item_collection', {'item_id': 'lavender_tea', 'first_obtained_at': 0});
   await s.tasks.completeAndClaim('daily_check_in');
@@ -110,6 +116,16 @@ void main() {
         await t.tap(find.text('任務').last);
         await settle(t);
         await t.tap(find.text('獎勵櫃'));
+      }), skip: !enabled);
+  testWidgets('09 月報表', (t) => shoot(t, '09_report', before: () async {
+        await t.tap(find.text('記帳').last);
+        await settle(t);
+        await t.tap(find.byTooltip('月報表'));
+      }), skip: !enabled);
+  testWidgets('10 合成', (t) => shoot(t, '10_craft', before: () async {
+        await t.tap(find.text('道具').last);
+        await settle(t);
+        await t.tap(find.text('合成'));
       }), skip: !enabled);
   testWidgets('08 失控', (t) => shoot(t, '08_insane', before: () async {
         final s = ProviderScope.containerOf(t.element(find.byType(NavigationBar))).read(servicesProvider);

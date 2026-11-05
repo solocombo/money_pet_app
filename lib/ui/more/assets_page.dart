@@ -5,8 +5,15 @@ import 'package:intl/intl.dart';
 import '../../data/models.dart';
 import '../../domain/enums.dart';
 import '../../domain/finance_rules.dart';
+import '../../services/report_service.dart';
 import '../../state/providers.dart';
+import '../widgets/charts.dart';
 import '../widgets/common.dart';
+
+final _netWorthHistoryProvider = FutureProvider<List<(DateTime, int)>>((ref) {
+  ref.watch(dataVersionProvider);
+  return ReportService(ref.watch(servicesProvider).ctx).netWorthHistory();
+});
 
 class AssetsPage extends ConsumerWidget {
   const AssetsPage({super.key});
@@ -31,6 +38,25 @@ class AssetsPage extends ConsumerWidget {
                 Text('總資產', style: Theme.of(context).textTheme.labelLarge),
                 Text(formatMoney(total),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Builder(builder: (_) {
+                  final h = ref.watch(_netWorthHistoryProvider).value ?? const [];
+                  if (h.length < 2) return const SizedBox.shrink();
+                  final diff = h.last.$2 - h.first.$2;
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const SizedBox(height: 12),
+                    LineChart(
+                      values: [for (final e in h) e.$2.toDouble()],
+                      color: diff >= 0 ? Colors.green : Colors.red,
+                      height: 90,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '近 90 天 ${diff >= 0 ? '+' : ''}${formatMoney(diff)}'
+                      '（${DateFormat('M/d').format(h.first.$1)} 起）',
+                      style: TextStyle(color: diff >= 0 ? Colors.green.shade700 : Colors.red, fontSize: 12),
+                    ),
+                  ]);
+                }),
                 const SizedBox(height: 4),
                 const Text('每 3 天更新一次餘額可以完成固定任務。股價為手動輸入。',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),

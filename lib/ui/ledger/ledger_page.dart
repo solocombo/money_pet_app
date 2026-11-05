@@ -12,6 +12,7 @@ import '../home/pet_page.dart' show TxnTile;
 import '../widgets/common.dart';
 import 'add_transaction_sheet.dart';
 import 'budget_page.dart';
+import 'report_page.dart';
 
 class LedgerPage extends ConsumerStatefulWidget {
   const LedgerPage({super.key});
@@ -34,6 +35,12 @@ class _LedgerPageState extends ConsumerState<LedgerPage> {
       appBar: AppBar(
         title: const GText('記帳'),
         actions: [
+          IconButton(
+            tooltip: '月報表',
+            icon: const Icon(Icons.bar_chart),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => ReportPage(month: month))),
+          ),
           IconButton(
             tooltip: '預算',
             icon: const Icon(Icons.pie_chart_outline),
