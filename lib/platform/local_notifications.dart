@@ -43,8 +43,17 @@ class LocalNotificationScheduler implements NotificationScheduler {
     _ready = true;
   }
 
+  /// 任何錯誤都回傳 false，不要讓權限問題卡住使用者流程。
   @override
   Future<bool> requestPermission() async {
+    try {
+      return await _requestPermission();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _requestPermission() async {
     await init();
     if (defaultTargetPlatform == TargetPlatform.android) {
       final android = _plugin.resolvePlatformSpecificImplementation<

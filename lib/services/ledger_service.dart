@@ -276,7 +276,12 @@ class LedgerService {
   /// 這樣「新增 → 用掉道具 → 刪除」重複操作也刷不到更多道具。
   Future<bool> _consumeDropQuota(DatabaseExecutor ex, AppSettings s) async {
     final key = 'drop_count:${dateKey(ctx.now())}';
-    final used = int.tryParse(await settings.getRaw(key, ex) ?? '') ?? 0;
+    final raw = await settings.getRaw(key, ex);
+    if (raw == null) {
+      // 新的一天：順手清掉以前的計數器
+      await ex.delete('app_settings', where: "key LIKE 'drop_count:%' AND key != ?", whereArgs: [key]);
+    }
+    final used = int.tryParse(raw ?? '') ?? 0;
     if (used >= s.dailyDropLimit) return false;
     await settings.setRaw(key, '${used + 1}', ex);
     return true;

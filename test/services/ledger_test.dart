@@ -118,6 +118,8 @@ void main() {
       clock.advance(const Duration(days: 1));
       final d = await s.ledger.addExpense(category: Category.dining, amount: 100);
       expect(d.droppedItem, isNotNull, reason: '隔天重置');
+      final keys = await s.ctx.db.query('app_settings', where: "key LIKE 'drop_count:%'");
+      expect(keys.length, 1, reason: '舊的計數器被清掉');
     });
   });
 
