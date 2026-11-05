@@ -9,12 +9,20 @@ import '../services/bill_service.dart';
 import '../services/context.dart';
 import '../services/inventory_service.dart';
 import '../services/ledger_service.dart';
+import '../services/notification_service.dart';
 import '../services/task_service.dart';
 
 /// 在 main() 用 overrideWithValue 注入。
 final servicesProvider = Provider<AppServices>(
   (ref) => throw UnimplementedError('servicesProvider must be overridden'),
 );
+
+/// 平台通知排程器。main() 會換成真正的 flutter_local_notifications 版本。
+final notificationSchedulerProvider =
+    Provider<NotificationScheduler>((ref) => NoopScheduler());
+
+final notificationServiceProvider = Provider<NotificationService>((ref) =>
+    NotificationService(ref.watch(servicesProvider), ref.watch(notificationSchedulerProvider)));
 
 /// 資料版本號。任何寫入後 +1，所有讀取 provider 都會重新查詢。
 /// 資料量小（純本地），這樣比精細追蹤每張表簡單且不易出錯。

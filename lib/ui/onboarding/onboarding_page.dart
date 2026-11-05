@@ -49,6 +49,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   void _next() => setState(() => _step = _step! + 1);
 
   Future<void> _finish() async {
+    // 完成時才請求通知權限，使用者比較知道為什麼需要。
+    await ref.read(notificationSchedulerProvider).requestPermission();
+    if (!mounted) return;
     await runAction(context, ref, (s) => s.settings.update((x) => x.copyWith(onboardingDone: true)));
   }
 

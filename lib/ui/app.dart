@@ -72,12 +72,17 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _onResume();
+    // 進背景時用最新資料重排通知（例如今天已記帳就取消今天的提醒）。
+    if (state == AppLifecycleState.paused) {
+      ref.read(notificationServiceProvider).reschedule();
+    }
   }
 
   /// 回到前景：推進寵物時間、結算上個月。
   Future<void> _onResume() async {
     final report = await runAction(context, ref, (s) => s.onAppResume());
     if (report == null || !mounted) return;
+    ref.read(notificationServiceProvider).reschedule();
     if (report.settlements.isNotEmpty) await _showSettlement(report);
   }
 

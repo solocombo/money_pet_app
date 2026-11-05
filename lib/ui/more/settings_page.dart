@@ -168,6 +168,28 @@ class _Body extends ConsumerWidget {
       const SectionTitle('通知設定'),
       Card(
         child: Column(children: [
+          SwitchListTile(
+            title: const Text('手機通知'),
+            subtitle: const Text('帳單、每日記帳、資產更新提醒'),
+            value: s.notificationsEnabled,
+            onChanged: (v) async {
+              if (v) await ref.read(notificationSchedulerProvider).requestPermission();
+              if (!context.mounted) return;
+              await _set(context, ref, (x) => x.copyWith(notificationsEnabled: v));
+              await ref.read(notificationServiceProvider).reschedule();
+            },
+          ),
+          SwitchListTile(
+            title: const Text('每日記帳提醒'),
+            subtitle: const Text('今天已經記過帳就不會提醒'),
+            value: s.dailyReminderEnabled,
+            onChanged: s.notificationsEnabled
+                ? (v) async {
+                    await _set(context, ref, (x) => x.copyWith(dailyReminderEnabled: v));
+                    await ref.read(notificationServiceProvider).reschedule();
+                  }
+                : null,
+          ),
           ListTile(
             title: const Text('每日提醒時間'),
             trailing: Text(s.dailyReminderTime),
@@ -180,6 +202,7 @@ class _Body extends ConsumerWidget {
               if (t == null || !context.mounted) return;
               final str = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
               await _set(context, ref, (x) => x.copyWith(dailyReminderTime: str));
+              await ref.read(notificationServiceProvider).reschedule();
             },
           ),
           ListTile(
@@ -195,10 +218,14 @@ class _Body extends ConsumerWidget {
             value: s.receiveBroadcast,
             onChanged: (v) => _set(context, ref, (x) => x.copyWith(receiveBroadcast: v)),
           ),
-          const ListTile(
-            dense: true,
-            title: Text('手機推播通知將在下一版加入，目前提醒會顯示在首頁。',
-                style: TextStyle(color: Colors.grey)),
+          ListTile(
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('重新排程通知'),
+            subtitle: const Text('改了帳單或時間後會自動排程，通常不需要按'),
+            onTap: () async {
+              final n = await ref.read(notificationServiceProvider).reschedule();
+              if (context.mounted) toast(context, n < 0 ? '排程失敗，請確認通知權限' : '已排程 $n 則通知');
+            },
           ),
         ]),
       ),

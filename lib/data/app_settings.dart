@@ -21,6 +21,8 @@ class AppSettings {
     this.dailyReminderTime = '21:00',
     this.billRemindDaysDefault = 3,
     this.receiveBroadcast = true,
+    this.notificationsEnabled = true,
+    this.dailyReminderEnabled = true,
   });
 
   final bool onboardingDone;
@@ -46,10 +48,14 @@ class AppSettings {
   /// 每天最多掉落幾個道具（防止新增 / 刪除刷道具）。
   final int dailyDropLimit;
 
-  // 通知設定（本地通知於下一階段接上）
+  // 通知設定
   final String dailyReminderTime;
   final int billRemindDaysDefault;
   final bool receiveBroadcast;
+
+  /// 本地通知總開關。
+  final bool notificationsEnabled;
+  final bool dailyReminderEnabled;
 
   AppSettings copyWith({
     bool? onboardingDone,
@@ -67,6 +73,8 @@ class AppSettings {
     String? dailyReminderTime,
     int? billRemindDaysDefault,
     bool? receiveBroadcast,
+    bool? notificationsEnabled,
+    bool? dailyReminderEnabled,
   }) =>
       AppSettings(
         onboardingDone: onboardingDone ?? this.onboardingDone,
@@ -86,6 +94,8 @@ class AppSettings {
         billRemindDaysDefault:
             billRemindDaysDefault ?? this.billRemindDaysDefault,
         receiveBroadcast: receiveBroadcast ?? this.receiveBroadcast,
+        notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+        dailyReminderEnabled: dailyReminderEnabled ?? this.dailyReminderEnabled,
       );
 
   Map<String, Object?> toJson() => {
@@ -110,6 +120,8 @@ class AppSettings {
         'dailyReminderTime': dailyReminderTime,
         'billRemindDaysDefault': billRemindDaysDefault,
         'receiveBroadcast': receiveBroadcast,
+        'notificationsEnabled': notificationsEnabled,
+        'dailyReminderEnabled': dailyReminderEnabled,
       };
 
   factory AppSettings.fromJson(Map<String, Object?> j) {
@@ -147,6 +159,8 @@ class AppSettings {
       dailyReminderTime: v('dailyReminderTime', d.dailyReminderTime),
       billRemindDaysDefault: v('billRemindDaysDefault', d.billRemindDaysDefault),
       receiveBroadcast: v('receiveBroadcast', d.receiveBroadcast),
+      notificationsEnabled: v('notificationsEnabled', d.notificationsEnabled),
+      dailyReminderEnabled: v('dailyReminderEnabled', d.dailyReminderEnabled),
     );
   }
 
