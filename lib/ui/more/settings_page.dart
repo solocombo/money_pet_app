@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/app_settings.dart';
+import '../../domain/date_utils.dart';
 import '../../domain/pt_rules.dart';
+import '../../platform/file_io.dart';
+import '../../services/backup_service.dart';
 import '../../state/providers.dart';
 import '../widgets/common.dart';
 
@@ -237,9 +240,21 @@ class _Body extends ConsumerWidget {
             title: Text('資料加密儲存在本機'),
             subtitle: Text('使用 SQLCipher 加密，不會上傳到任何伺服器'),
           ),
+          ListTile(
+            leading: const Icon(Icons.ios_share),
+            title: const Text('匯出備份'),
+            subtitle: const Text('完整備份（JSON）＋記帳明細（CSV，可用 Excel 開）。可存到 Google Drive'),
+            onTap: () => _export(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_backup_restore),
+            title: const Text('從備份還原'),
+            subtitle: const Text('選擇之前匯出的 JSON 檔，會覆蓋目前所有資料'),
+            onTap: () => _import(context, ref),
+          ),
           const ListTile(
-            leading: Icon(Icons.cloud_upload_outlined),
-            title: Text('Google Drive 備份'),
+            leading: Icon(Icons.cloud_sync_outlined),
+            title: Text('Google Drive 自動備份'),
             subtitle: Text('v1.2 推出'),
             enabled: false,
           ),
@@ -254,6 +269,42 @@ class _Body extends ConsumerWidget {
     ]);
   }
 
+  Future<void> _export(BuildContext context, WidgetRef ref) async {
+    final svc = ref.read(servicesProvider);
+    final b = BackupService(svc.ctx);
+    final stamp = dateKey(svc.ctx.now());
+    try {
+      await shareTextFiles({
+        'money_pet_backup_$stamp.json': await b.exportJson(),
+        'money_pet_transactions_$stamp.csv': await b.exportTransactionsCsv(),
+      }, text: '錢寵備份 $stamp');
+    } catch (e) {
+      if (context.mounted) toast(context, '匯出失敗：$e');
+    }
+  }
+
+  Future<void> _import(BuildContext context, WidgetRef ref) async {
+    final ok = await confirmDialog(context,
+        title: '從備份還原？',
+        message: '目前手機上的所有資料都會被備份檔的內容取代。建議先匯出一份目前的備份。',
+        confirm: '選擇檔案',
+        danger: true);
+    if (!ok || !context.mounted) return;
+    final String? text;
+    try {
+      text = await pickTextFile();
+    } catch (e) {
+      if (context.mounted) toast(context, '無法讀取檔案：$e');
+      return;
+    }
+    if (text == null || !context.mounted) return;
+    final r = await runAction(context, ref, (s) => BackupService(s.ctx).importJson(text!));
+    if (r != null && context.mounted) {
+      toast(context, '還原完成（${r.rows} 筆資料）');
+      await ref.read(notificationServiceProvider).reschedule();
+    }
+  }
+
   Future<void> _clearAll(BuildContext context, WidgetRef ref) async {
     final first = await confirmDialog(context,
         title: '清除所有資料？', message: '所有資料都會被刪除，而且無法復原。', confirm: '繼續', danger: true);
@@ -261,6 +312,7 @@ class _Body extends ConsumerWidget {
     final typed = await promptText(context, title: '再確認一次', label: '請輸入「刪除」兩個字');
     if (typed?.trim() != '刪除' || !context.mounted) return;
     await runAction(context, ref, (svc) => svc.clearAllData());
+    await ref.read(notificationServiceProvider).reschedule(); // 資料清空 → 取消所有通知
     if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 }
