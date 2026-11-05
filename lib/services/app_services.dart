@@ -11,6 +11,7 @@ import 'context.dart';
 import 'inventory_service.dart';
 import 'ledger_service.dart';
 import 'pet_service.dart';
+import 'premium_service.dart';
 import 'reward_service.dart';
 import 'settings_service.dart';
 import 'task_service.dart';
@@ -41,7 +42,9 @@ class AppServices {
     rewards = RewardService(ctx, settings, wallet, tasks);
     assets = AssetService(ctx, tasks);
     bills = BillService(ctx, ledger);
-    ads = AdRewardService(ctx, settings, wallet);
+    premium = PremiumService(ctx, settings);
+    ads = AdRewardService(ctx, settings, wallet, premium);
+    tasks.premium = premium;
   }
 
   factory AppServices(Database db, {DateTime Function()? clock, Random? random}) =>
@@ -58,6 +61,7 @@ class AppServices {
   late final AssetService assets;
   late final BillService bills;
   late final AdRewardService ads;
+  late final PremiumService premium;
 
   /// 啟動 / 回到前景時呼叫：推進寵物時間、沿用預算、結算上個月。
   /// 順序：先沿用預算（影響本月 PT），再結算過去月份，最後推進寵物。

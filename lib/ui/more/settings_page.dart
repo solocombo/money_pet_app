@@ -307,7 +307,7 @@ class _Body extends ConsumerWidget {
 
   Future<void> _clearAll(BuildContext context, WidgetRef ref) async {
     final first = await confirmDialog(context,
-        title: '清除所有資料？', message: '所有資料都會被刪除，而且無法復原。', confirm: '繼續', danger: true);
+        title: '清除所有資料？', message: '所有資料都會被刪除，而且無法復原。\n\n（進階版之後可以在「升級進階版 → 恢復購買」找回）', confirm: '繼續', danger: true);
     if (!first || !context.mounted) return;
     final typed = await promptText(context, title: '再確認一次', label: '請輸入「刪除」兩個字');
     if (typed?.trim() != '刪除' || !context.mounted) return;

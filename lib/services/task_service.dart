@@ -5,6 +5,7 @@ import '../domain/items.dart';
 import '../domain/tasks.dart';
 import 'context.dart';
 import 'inventory_service.dart' show addItemToInventory;
+import 'premium_service.dart';
 import 'wallet_service.dart';
 
 class TaskStatus {
@@ -33,6 +34,9 @@ class TaskService {
   TaskService(this.ctx, this.wallet);
   final ServiceContext ctx;
   final WalletService wallet;
+
+  /// 由 AppServices 設定（避免建構順序的循環依賴）。
+  PremiumService? premium;
 
   String periodFor(TaskDef def) => switch (def.kind) {
         TaskKind.newbie => '',
@@ -87,7 +91,8 @@ class TaskService {
   }
 
   /// 完成並立即領取（簽到用）。已領過則回傳 false。
-  Future<bool> completeAndClaim(String taskId) async {
+  /// 進階版簽到時額外送一個道具，透過 [onBonusItem] 告知 UI。
+  Future<bool> completeAndClaim(String taskId, {void Function(ItemDef)? onBonusItem}) async {
     final def = taskById(taskId);
     final period = periodFor(def);
     await ctx.db.transaction((txn) => complete(txn, taskId));
@@ -95,6 +100,11 @@ class TaskService {
         where: 'task_id = ? AND period = ?', whereArgs: [taskId, period]);
     if (rows.isEmpty || rows.first['claimed_at'] != null) return false;
     await claim(taskId, period);
+    final p = premium;
+    if (taskId == TaskIds.dailyCheckIn && p != null && await p.isPremium()) {
+      final item = await ctx.db.transaction((txn) => p.grantDailyBonusItem(txn));
+      onBonusItem?.call(item);
+    }
     return true;
   }
 

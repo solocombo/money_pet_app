@@ -61,6 +61,12 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onResume());
+    // 購買 / 恢復購買成功 → 解鎖進階版
+    ref.read(purchaseGatewayProvider).onPurchased = () async {
+      await ref.read(servicesProvider).premium.unlock();
+      ref.read(dataVersionProvider.notifier).bump();
+      if (mounted) toast(context, '🎉 已解鎖進階版，謝謝你的支持！');
+    };
   }
 
   @override

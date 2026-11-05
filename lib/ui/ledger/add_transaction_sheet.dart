@@ -389,7 +389,7 @@ class _DropWithRerollState extends ConsumerState<_DropWithReroll> {
 
   Future<void> _reroll() async {
     setState(() => _busy = true);
-    final watched = await ref.read(adGatewayProvider).show();
+    final watched = await watchRewardedAd(ref);
     if (!mounted) return;
     if (!watched) {
       setState(() => _busy = false);
@@ -414,8 +414,8 @@ class _DropWithRerollState extends ConsumerState<_DropWithReroll> {
         if (_canReroll)
           TextButton.icon(
             onPressed: _busy ? null : _reroll,
-            icon: const Text('📺'),
-            label: const Text('不喜歡？看廣告重抽'),
+            icon: const Text('🎲'),
+            label: Text(ref.watch(premiumProvider).value == true ? '不喜歡？重抽一次' : '不喜歡？看廣告重抽'),
           ),
       ]);
 }

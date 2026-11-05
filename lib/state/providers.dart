@@ -11,6 +11,7 @@ import '../services/context.dart';
 import '../services/inventory_service.dart';
 import '../services/ledger_service.dart';
 import '../services/notification_service.dart';
+import '../services/premium_service.dart';
 import '../services/task_service.dart';
 
 /// 在 main() 用 overrideWithValue 注入。
@@ -27,6 +28,17 @@ final notificationServiceProvider = Provider<NotificationService>((ref) =>
 
 /// 激勵式廣告。main() 會換成 AdMob 版本。
 final adGatewayProvider = Provider<RewardedAdGateway>((ref) => FakeAdGateway());
+
+/// 商店購買。main() 會換成 in_app_purchase 版本。
+final purchaseGatewayProvider = Provider<PurchaseGateway>((ref) => FakePurchaseGateway());
+
+final premiumProvider = _q<bool>((s) => s.premium.isPremium());
+
+/// 播放激勵廣告；進階版直接視為看完（移除廣告）。
+Future<bool> watchRewardedAd(WidgetRef ref) async {
+  if (await ref.read(servicesProvider).premium.isPremium()) return true;
+  return ref.read(adGatewayProvider).show();
+}
 
 final adCoinsRemainingProvider =
     _q<int>((s) => s.ads.remaining(AdRewardKind.coins));

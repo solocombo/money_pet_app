@@ -7,6 +7,7 @@ import '../ledger/budget_page.dart';
 import '../widgets/common.dart';
 import 'assets_page.dart';
 import 'bills_page.dart';
+import 'premium_page.dart';
 import 'settings_page.dart';
 
 /// 隱私權政策摘要（完整版見 docs/privacy.md，上架時以 GitHub Pages 公開）。
@@ -67,6 +68,15 @@ class MorePage extends ConsumerWidget {
               onTap: () => go(const PaymentMethodsPage()),
             ),
           ]),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Text('👑', style: TextStyle(fontSize: 24)),
+            title: Text(ref.watch(premiumProvider).value == true ? '進階版（已解鎖）' : '升級進階版'),
+            subtitle: const Text('移除廣告、無限重抽、每日加碼道具'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => go(const PremiumPage()),
+          ),
         ),
         const SectionTitle('其他'),
         Card(

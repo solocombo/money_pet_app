@@ -258,16 +258,19 @@ class _AdCoinsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final left = ref.watch(adCoinsRemainingProvider).value ?? 0;
+    final premium = ref.watch(premiumProvider).value ?? false;
     return Card(
       child: ListTile(
-        leading: const Text('📺', style: TextStyle(fontSize: 26)),
-        title: const Text('看廣告領金幣'),
-        subtitle: Text('每次 🪙 $adCoinReward，今天還剩 $left 次（完全自願）'),
+        leading: Text(premium ? '🎁' : '📺', style: const TextStyle(fontSize: 26)),
+        title: Text(premium ? '每日金幣' : '看廣告領金幣'),
+        subtitle: Text(premium
+            ? '進階版免看廣告，每次 🪙 $adCoinReward，今天還剩 $left 次'
+            : '每次 🪙 $adCoinReward，今天還剩 $left 次（完全自願）'),
         trailing: FilledButton.tonal(
           onPressed: left <= 0
               ? null
               : () async {
-                  final watched = await ref.read(adGatewayProvider).show();
+                  final watched = await watchRewardedAd(ref);
                   if (!context.mounted) return;
                   if (!watched) {
                     toast(context, '廣告沒有看完或暫時無法載入，等等再試試');
@@ -276,7 +279,7 @@ class _AdCoinsCard extends ConsumerWidget {
                   await runAction(context, ref, (s) => s.ads.claimCoins(),
                       successMessage: '謝謝支持！🪙 +$adCoinReward');
                 },
-          child: const Text('觀看'),
+          child: Text(premium ? '領取' : '觀看'),
         ),
       ),
     );

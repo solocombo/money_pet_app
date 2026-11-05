@@ -6,6 +6,7 @@ import '../../data/models.dart';
 import '../../domain/enums.dart';
 import '../../domain/evolution_diary.dart';
 import '../../domain/finance_rules.dart';
+import '../../domain/items.dart';
 import '../../domain/pet_rules.dart';
 import '../../domain/tasks.dart';
 import '../../state/providers.dart';
@@ -316,10 +317,15 @@ class _DailyActions extends ConsumerWidget {
             onPressed: checkedIn
                 ? null
                 : () async {
+                    ItemDef? bonus;
                     final ok = await runAction(
-                        context, ref, (s) => s.tasks.completeAndClaim(TaskIds.dailyCheckIn));
+                        context,
+                        ref,
+                        (s) => s.tasks.completeAndClaim(TaskIds.dailyCheckIn,
+                            onBonusItem: (i) => bonus = i));
                     if (ok == true && context.mounted) {
-                      toast(context, '簽到成功！🪙 +${taskById(TaskIds.dailyCheckIn).rewardCoins}');
+                      final extra = bonus == null ? '' : '，進階版加碼 ${bonus!.emoji} ${bonus!.name}';
+                      toast(context, '簽到成功！🪙 +${taskById(TaskIds.dailyCheckIn).rewardCoins}$extra');
                     }
                   },
             icon: Icon(checkedIn ? Icons.check : Icons.event_available),

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'data/db_open.dart';
 import 'platform/admob.dart';
 import 'platform/local_notifications.dart';
+import 'platform/store_purchase.dart';
 import 'services/app_services.dart';
 import 'state/providers.dart';
 import 'ui/app.dart';
@@ -25,6 +26,7 @@ Future<void> main() async {
       servicesProvider.overrideWithValue(services),
       notificationSchedulerProvider.overrideWithValue(LocalNotificationScheduler()),
       adGatewayProvider.overrideWithValue(AdMobGateway()),
+      purchaseGatewayProvider.overrideWithValue(StorePurchaseGateway()),
     ],
     child: const MoneyPetApp(),
   ));

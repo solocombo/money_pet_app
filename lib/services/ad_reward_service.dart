@@ -4,6 +4,7 @@ import '../domain/date_utils.dart';
 import '../domain/items.dart';
 import 'context.dart';
 import 'inventory_service.dart';
+import 'premium_service.dart';
 import 'settings_service.dart';
 import 'wallet_service.dart';
 
@@ -26,20 +27,26 @@ enum AdRewardKind {
 /// 激勵式廣告的獎勵規則。廣告本身由 UI 透過 [RewardedAdGateway] 播放，
 /// **看完才呼叫這裡發獎勵**；廣告完全自願，不強迫。
 class AdRewardService {
-  AdRewardService(this.ctx, this.settings, this.wallet);
+  AdRewardService(this.ctx, this.settings, this.wallet, this.premium);
   final ServiceContext ctx;
   final SettingsService settings;
   final WalletService wallet;
+  final PremiumService premium;
 
   String _key(AdRewardKind k) => '${k.key}:${dateKey(ctx.now())}';
 
+  /// 進階版重抽不限次數（回傳一個很大的數）。
+  static const int unlimited = 999;
+
   Future<int> remaining(AdRewardKind k, [DatabaseExecutor? ex]) async {
+    if (k == AdRewardKind.reroll && await premium.isPremium(ex)) return unlimited;
     final used = int.tryParse(await settings.getRaw(_key(k), ex) ?? '') ?? 0;
     return (k.dailyLimit - used).clamp(0, k.dailyLimit);
   }
 
   Future<void> _consume(DatabaseExecutor ex, AdRewardKind k) async {
     if (await remaining(k, ex) <= 0) throw const UserError('今天的次數用完了，明天再來！');
+    if (k == AdRewardKind.reroll && await premium.isPremium(ex)) return;
     final key = _key(k);
     final used = int.tryParse(await settings.getRaw(key, ex) ?? '') ?? 0;
     if (used == 0) {
