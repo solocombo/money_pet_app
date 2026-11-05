@@ -58,6 +58,7 @@ class RewardService {
       });
       await txn.update('rewards', {'is_redeemed': 1, 'redeemed_at': ctx.nowMs()},
           where: 'id = ?', whereArgs: [id]);
+      await tasks.complete(txn, TaskIds.firstRedeem);
     });
   }
 

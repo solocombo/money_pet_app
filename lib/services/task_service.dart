@@ -38,6 +38,7 @@ class TaskService {
         TaskKind.newbie => '',
         TaskKind.daily => dateKey(ctx.now()),
         TaskKind.fixed => dateKey(ctx.now()),
+        TaskKind.milestone => '',
       };
 
   /// 標記完成（重複呼叫無害）。回傳是否為「這次才完成」。
@@ -97,16 +98,34 @@ class TaskService {
     return true;
   }
 
-  Future<int> recordedDayCount([DatabaseExecutor? ex]) async {
+  Future<int> recordedDayCount([DatabaseExecutor? ex]) async =>
+      (await recordedDays(ex)).length;
+
+  /// 從今天往回數，連續有記帳的天數（今天還沒記就從昨天開始算）。
+  Future<int> currentStreak([DatabaseExecutor? ex]) async {
+    final days = await recordedDays(ex);
+    var d = startOfDay(ctx.now());
+    if (!days.contains(dateKey(d))) d = d.subtract(const Duration(days: 1));
+    var n = 0;
+    while (days.contains(dateKey(d))) {
+      n++;
+      d = DateTime(d.year, d.month, d.day - 1);
+    }
+    return n;
+  }
+
+  Future<int> transactionCount([DatabaseExecutor? ex]) =>
+      sumInt(ex ?? ctx.db, 'SELECT COUNT(*) FROM transactions');
+
+  Future<Set<String>> recordedDays([DatabaseExecutor? ex]) async {
     final e = ex ?? ctx.db;
     final txnDays = await e.rawQuery(
         "SELECT DISTINCT date(occurred_at / 1000, 'unixepoch', 'localtime') AS d FROM transactions");
     final noSpend = await e.query('no_spend_days', columns: ['date']);
-    final days = {
+    return {
       for (final r in txnDays) r['d'] as String,
       for (final r in noSpend) r['date'] as String,
     };
-    return days.length;
   }
 
   /// 有記帳的事件發生後呼叫：更新相關任務。
@@ -115,11 +134,17 @@ class TaskService {
     if (await recordedDayCount(ex) >= 7) {
       await complete(ex, TaskIds.record7Days);
     }
+    final streak = await currentStreak(ex);
+    if (streak >= 7) await complete(ex, TaskIds.streak7);
+    if (streak >= 30) await complete(ex, TaskIds.streak30);
+    if (await transactionCount(ex) >= 100) await complete(ex, TaskIds.records100);
   }
 
   Future<List<TaskStatus>> statuses() async {
     final out = <TaskStatus>[];
     final days = await recordedDayCount();
+    final streak = await currentStreak();
+    final count = await transactionCount();
     for (final def in taskCatalog) {
       final period = periodFor(def);
       final rows = await ctx.db.query('task_progress',
@@ -127,6 +152,14 @@ class TaskService {
       String? hint;
       if (def.id == TaskIds.record7Days && rows.isEmpty) {
         hint = '${days.clamp(0, 7)} / 7 天';
+      }
+      if (rows.isEmpty) {
+        hint ??= switch (def.id) {
+          TaskIds.streak7 => '目前連續 $streak 天',
+          TaskIds.streak30 => '目前連續 $streak 天',
+          TaskIds.records100 => '${count.clamp(0, 100)} / 100 筆',
+          _ => null,
+        };
       }
       if (def.kind == TaskKind.fixed && rows.isEmpty) {
         final available = await _fixedTaskAvailable(ctx.db, def);

@@ -248,22 +248,28 @@ ItemUseResult applyItem(
     return ItemUseResult(s, '寵物康復了！', curesConditions: true);
   }
 
-  final attr = item.attribute!;
-  var delta = item.value.toDouble();
-  final notes = <String>[];
-  if (conditions.contains(ConditionType.gastroenteritis)) {
-    delta /= 2;
-    notes.add('腸胃炎：效果減半');
+  final notes = <String>{};
+  final parts = <String>[];
+  var next = s;
+  for (final e in item.effects.entries) {
+    final attr = e.key;
+    var delta = e.value.toDouble();
+    if (conditions.contains(ConditionType.gastroenteritis)) {
+      delta /= 2;
+      notes.add('腸胃炎：效果減半');
+    }
+    if (attr == PetAttribute.cleanliness &&
+        conditions.contains(ConditionType.shopaholic)) {
+      delta = -delta;
+      notes.add('購物狂：整潔值不升反降');
+    }
+    final before = next.valueOf(attr);
+    next = _addAttribute(next, attr, delta, conditions);
+    final actual = next.valueOf(attr) - before;
+    final sign = actual >= 0 ? '+' : '';
+    parts.add('${attr.label} $sign${actual.toStringAsFixed(0)}');
   }
-  if (attr == PetAttribute.cleanliness &&
-      conditions.contains(ConditionType.shopaholic)) {
-    delta = -delta;
-    notes.add('購物狂：整潔值不升反降');
-  }
-  final next = _addAttribute(s, attr, delta, conditions);
-  final actual = next.valueOf(attr) - s.valueOf(attr);
-  final sign = actual >= 0 ? '+' : '';
-  final msg = StringBuffer('${attr.label} $sign${actual.toStringAsFixed(0)}');
+  final msg = StringBuffer(parts.join('、'));
   if (notes.isNotEmpty) msg.write('（${notes.join('、')}）');
   return ItemUseResult(next, msg.toString());
 }

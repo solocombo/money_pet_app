@@ -1,7 +1,8 @@
 enum TaskKind {
   newbie('新手任務'),
   daily('每日任務'),
-  fixed('固定任務');
+  fixed('固定任務'),
+  milestone('里程碑');
 
   const TaskKind(this.label);
   final String label;
@@ -38,6 +39,11 @@ abstract final class TaskIds {
   static const dailyPoke = 'daily_poke';
   static const dailyRecord = 'daily_record';
   static const assetUpdate = 'fixed_asset_update';
+  static const firstCraft = 'newbie_first_craft';
+  static const streak7 = 'milestone_streak_7';
+  static const streak30 = 'milestone_streak_30';
+  static const records100 = 'milestone_records_100';
+  static const firstRedeem = 'milestone_first_redeem';
 }
 
 const int assetUpdateIntervalDays = 3;
@@ -77,7 +83,14 @@ const List<TaskDef> taskCatalog = [
     id: TaskIds.firstShop,
     kind: TaskKind.newbie,
     name: '第一次逛商店',
-    description: '在商店買一樣東西（合成系統上線前的替代任務）',
+    description: '在商店買一樣東西',
+    rewardCoins: 50,
+  ),
+  TaskDef(
+    id: TaskIds.firstCraft,
+    kind: TaskKind.newbie,
+    name: '第一次使用合成',
+    description: '在背包把食材合成成品',
     rewardCoins: 50,
   ),
   TaskDef(
@@ -114,6 +127,38 @@ const List<TaskDef> taskCatalog = [
     name: '更新資產資訊',
     description: '每 $assetUpdateIntervalDays 天更新一次資產帳戶餘額',
     rewardCoins: 30,
+  ),
+  TaskDef(
+    id: TaskIds.streak7,
+    kind: TaskKind.milestone,
+    name: '連續記帳 7 天',
+    description: '連續 7 天記帳或按本日無支出',
+    rewardCoins: 200,
+    rewardItemId: 'lavender_tea',
+  ),
+  TaskDef(
+    id: TaskIds.streak30,
+    kind: TaskKind.milestone,
+    name: '連續記帳 30 天',
+    description: '一整個月都沒有中斷！',
+    rewardCoins: 1000,
+    rewardItemId: 'elder_charm',
+  ),
+  TaskDef(
+    id: TaskIds.records100,
+    kind: TaskKind.milestone,
+    name: '累計記帳 100 筆',
+    description: '記帳老手',
+    rewardCoins: 500,
+    rewardItemId: 'golden_shrimp',
+  ),
+  TaskDef(
+    id: TaskIds.firstRedeem,
+    kind: TaskKind.milestone,
+    name: '第一次兌換獎勵',
+    description: '用 PT 兌換獎勵櫃裡的獎勵',
+    rewardCoins: 100,
+    rewardItemId: 'star_projector',
   ),
 ];
 

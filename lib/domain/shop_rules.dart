@@ -31,7 +31,9 @@ List<ShopSlot> dailyShop(DateTime day) {
 
   ItemDef pick(bool Function(ItemDef) filter) {
     final pool =
-        itemCatalog.where((i) => filter(i) && !usedIds.contains(i.id)).toList();
+        itemCatalog
+        .where((i) => !i.craftedOnly && filter(i) && !usedIds.contains(i.id))
+        .toList();
     final item = pool[rng.nextInt(pool.length)];
     usedIds.add(item.id);
     return item;

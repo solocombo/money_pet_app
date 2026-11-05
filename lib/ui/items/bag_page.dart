@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../domain/enums.dart';
 import '../../domain/items.dart';
+import '../../domain/recipes.dart';
 import '../../services/inventory_service.dart';
 import '../../state/providers.dart';
 import '../widgets/common.dart';
@@ -13,18 +14,19 @@ class BagPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 3,
+        length: 4,
         child: Scaffold(
           appBar: AppBar(
             title: const GText('道具'),
             actions: const [CoinChip()],
             bottom: const TabBar(tabs: [
               Tab(text: '背包'),
+              Tab(text: '合成'),
               Tab(text: '商店'),
               Tab(text: '圖鑑'),
             ]),
           ),
-          body: const TabBarView(children: [_Inventory(), _Shop(), _Collection()]),
+          body: const TabBarView(children: [_Inventory(), _Crafting(), _Shop(), _Collection()]),
         ),
       );
 }
@@ -87,7 +89,8 @@ class _Inventory extends ConsumerWidget {
           ListTile(
             leading: _ItemIcon(e.item, size: 40),
             title: Text(e.item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${e.item.description}\n${e.item.effectText}'),
+            subtitle: Text('${e.item.description}\n${e.item.effectText}'
+                '${e.item.craftedOnly ? '' : _usedIn(e.item.id)}'),
             isThreeLine: true,
           ),
           const Divider(),
@@ -111,6 +114,110 @@ class _Inventory extends ConsumerWidget {
                   successMessage: '賣出 ${e.item.name}，獲得 🪙 ${e.item.sellPrice}');
             },
           ),
+        ]),
+      ),
+    );
+  }
+}
+
+String _usedIn(String itemId) {
+  final names = [
+    for (final r in recipes)
+      if (r.ingredients.containsKey(itemId) && r.requiredWisdomLevel == 1) r.result.name,
+  ];
+  return names.isEmpty ? '' : '\n可合成：${names.join('、')}';
+}
+
+class _Crafting extends ConsumerWidget {
+  const _Crafting();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pet = ref.watch(petProvider).value;
+    final insane = pet?.stats.isInsane ?? false;
+    final level = pet?.stats.wisdomLevel ?? 1;
+    return AsyncView(ref.watch(inventoryProvider), builder: (inv) {
+      final have = {for (final e in inv) e.item.id: e.quantity};
+      final sorted = [...recipes]
+        ..sort((a, b) {
+          final ca = craftableCount(a, have) > 0 ? 0 : 1;
+          final cb = craftableCount(b, have) > 0 ? 0 : 1;
+          return ca.compareTo(cb);
+        });
+      return ListView(padding: const EdgeInsets.symmetric(vertical: 8), children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: GText(
+            insane ? '……牠盯著材料發呆，什麼都做不出來。' : '把記帳拿到的食材合成成品，效果更好！',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        for (final r in sorted) _RecipeCard(recipe: r, have: have, wisdomLevel: level, disabled: insane),
+      ]);
+    });
+  }
+}
+
+class _RecipeCard extends ConsumerWidget {
+  const _RecipeCard({
+    required this.recipe,
+    required this.have,
+    required this.wisdomLevel,
+    required this.disabled,
+  });
+  final Recipe recipe;
+  final Map<String, int> have;
+  final int wisdomLevel;
+  final bool disabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final result = recipe.result;
+    final locked = wisdomLevel < recipe.requiredWisdomLevel;
+    final can = craftableCount(recipe, have);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            _ItemIcon(result, silhouette: locked),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(locked ? '？？？' : result.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  locked ? '寵物智慧 Lv${recipe.requiredWisdomLevel} 解鎖' : '${result.rarity.label} · ${result.effectText}',
+                  style: TextStyle(color: locked ? Colors.grey : rarityColor(result.rarity), fontSize: 12),
+                ),
+              ]),
+            ),
+            FilledButton(
+              onPressed: locked || disabled || can == 0
+                  ? null
+                  : () async {
+                      final item = await runAction(context, ref, (s) => s.inventory.craft(recipe.id));
+                      if (item != null && context.mounted) {
+                        toast(context, '合成成功！獲得 ${item.emoji} ${item.name}');
+                      }
+                    },
+              child: Text(can > 0 && !locked ? '合成' : '材料不足'),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 4, children: [
+            for (final e in recipe.ingredients.entries)
+              Builder(builder: (_) {
+                final item = itemById(e.key)!;
+                final n = have[e.key] ?? 0;
+                final enough = n >= e.value;
+                return Chip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: Text(item.emoji),
+                  label: Text('${item.name} $n/${e.value}',
+                      style: TextStyle(color: enough ? null : Colors.red)),
+                );
+              }),
+          ]),
         ]),
       ),
     );

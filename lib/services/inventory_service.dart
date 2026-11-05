@@ -2,6 +2,8 @@ import 'package:sqflite_common/sqlite_api.dart';
 
 import '../domain/date_utils.dart';
 import '../domain/items.dart';
+import '../domain/pet_rules.dart' show wisdomLevelOf;
+import '../domain/recipes.dart';
 import '../domain/shop_rules.dart';
 import '../domain/tasks.dart';
 import 'context.dart';
@@ -108,15 +110,48 @@ class InventoryService {
     ];
   }
 
+  Future<bool> _isInsane(DatabaseExecutor ex) async =>
+      await sumInt(ex,
+          'SELECT COUNT(*) FROM pet_status s JOIN pets p ON p.id = s.pet_id '
+          'WHERE p.is_active = 1 AND s.is_insane = 1') >
+      0;
+
+  Future<Map<String, int>> quantities([DatabaseExecutor? ex]) async => {
+        for (final r in await (ex ?? ctx.db).query('inventory'))
+          r['item_id'] as String: r['quantity'] as int,
+      };
+
+  /// 合成：扣材料、得到成品、登記圖鑑。
+  Future<ItemDef> craft(String recipeId) async {
+    final recipe = recipes.firstWhere((r) => r.id == recipeId,
+        orElse: () => throw const UserError('找不到這個配方'));
+    await ctx.db.transaction((txn) async {
+      if (await _isInsane(txn)) throw const UserError('寵物失控中，沒辦法合成……');
+      if (recipe.requiredWisdomLevel > 1) {
+        final rows = await txn.rawQuery(
+            'SELECT s.wisdom FROM pet_status s JOIN pets p ON p.id = s.pet_id WHERE p.is_active = 1');
+        final w = rows.isEmpty ? 0.0 : (rows.first['wisdom'] as num).toDouble();
+        if (wisdomLevelOf(w) < recipe.requiredWisdomLevel) {
+          throw UserError('寵物智慧要 Lv${recipe.requiredWisdomLevel} 才會這個配方');
+        }
+      }
+      for (final e in recipe.ingredients.entries) {
+        if (!await removeItemFromInventory(txn, e.key, e.value)) {
+          throw const UserError('材料不足');
+        }
+      }
+      await addItemToInventory(txn, ctx, recipe.resultId);
+      await tasks.complete(txn, TaskIds.firstCraft);
+    });
+    return recipe.result;
+  }
+
   /// 每格商品每天限購一次。
   Future<ItemDef> buy(int slotIndex) async {
     final today = ctx.now();
     final slot = dailyShop(today).firstWhere((s) => s.slot == slotIndex);
     await ctx.db.transaction((txn) async {
-      final insane = await sumInt(txn,
-          'SELECT COUNT(*) FROM pet_status s JOIN pets p ON p.id = s.pet_id '
-          'WHERE p.is_active = 1 AND s.is_insane = 1');
-      if (insane > 0) throw const UserError('寵物失控中，商店暫停營業……');
+      if (await _isInsane(txn)) throw const UserError('寵物失控中，商店暫停營業……');
       final exists = await txn.query('shop_purchases',
           where: 'date = ? AND slot = ?', whereArgs: [dateKey(today), slotIndex]);
       if (exists.isNotEmpty) throw const UserError('今天已經買過這個了');

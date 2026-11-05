@@ -21,6 +21,8 @@ class ItemDef {
     this.effect = ItemEffect.attribute,
     this.attribute,
     this.value = 0,
+    this.extraEffects = const {},
+    this.craftedOnly = false,
   });
 
   /// 穩定 id，會存進資料庫，**不可更改**。
@@ -32,6 +34,18 @@ class ItemDef {
   final ItemEffect effect;
   final PetAttribute? attribute;
   final int value;
+
+  /// 成品道具的額外效果（主效果之外的其他屬性）。
+  final Map<PetAttribute, int> extraEffects;
+
+  /// 只能靠合成取得：不會掉落、商店不賣。
+  final bool craftedOnly;
+
+  /// 所有屬性效果（主效果在前）。
+  Map<PetAttribute, int> get effects => {
+        ?attribute: value,
+        ...extraEffects,
+      };
 
   /// 商店售價（金幣）。
   int get shopPrice => switch (rarity) {
@@ -46,7 +60,8 @@ class ItemDef {
 
   String get effectText => switch (effect) {
         ItemEffect.cure => '治療所有生病狀態',
-        ItemEffect.attribute => '${attribute!.label} +$value',
+        ItemEffect.attribute =>
+          effects.entries.map((e) => '${e.key.label} +${e.value}').join('、'),
       };
 }
 
@@ -114,6 +129,7 @@ final List<ItemDef> itemCatalog = List.unmodifiable([
     description: '吃了就會好起來。',
     effect: ItemEffect.cure,
   ),
+  ..._craftedItems,
   const ItemDef(
     id: 'panacea',
     name: '萬靈藥',
@@ -124,6 +140,52 @@ final List<ItemDef> itemCatalog = List.unmodifiable([
   ),
 ]);
 
+/// 合成成品（只能合成取得）。
+const List<ItemDef> _craftedItems = [
+  ItemDef(
+    id: 'bento', name: '元氣便當', emoji: '🍱', rarity: Rarity.rare, craftedOnly: true,
+    description: '自己做的最好吃。',
+    attribute: PetAttribute.fullness, value: 15, extraEffects: {PetAttribute.health: 5},
+  ),
+  ItemDef(
+    id: 'deluxe_set', name: '豪華定食', emoji: '🍛', rarity: Rarity.epic, craftedOnly: true,
+    description: '主菜、湯、飲料一次到位。',
+    attribute: PetAttribute.fullness, value: 25,
+    extraEffects: {PetAttribute.health: 10, PetAttribute.mood: 5},
+  ),
+  ItemDef(
+    id: 'spa_set', name: '香氛泡澡組', emoji: '🛁', rarity: Rarity.epic, craftedOnly: true,
+    description: '泡完整個人都亮了。',
+    attribute: PetAttribute.cleanliness, value: 25, extraEffects: {PetAttribute.mood: 5},
+  ),
+  ItemDef(
+    id: 'party_box', name: '派對盒', emoji: '🎉', rarity: Rarity.epic, craftedOnly: true,
+    description: '打開會噴彩帶。',
+    attribute: PetAttribute.mood, value: 25,
+  ),
+  ItemDef(
+    id: 'study_plan', name: '讀書計畫', emoji: '🗓️', rarity: Rarity.rare, craftedOnly: true,
+    description: '把便條紙整理成一份計畫。',
+    attribute: PetAttribute.wisdom, value: 8,
+  ),
+  ItemDef(
+    id: 'calming_sachet', name: '安神香包', emoji: '👝', rarity: Rarity.epic, craftedOnly: true,
+    description: '聞了會想睡覺。',
+    attribute: PetAttribute.san, value: 25,
+  ),
+  ItemDef(
+    id: 'home_remedy', name: '自製感冒藥', emoji: '🫖', rarity: Rarity.rare, craftedOnly: true,
+    description: '維他命配果汁，阿嬤說有效。',
+    effect: ItemEffect.cure,
+  ),
+  ItemDef(
+    id: 'feast', name: '全家福大餐', emoji: '🍽️', rarity: Rarity.legendary, craftedOnly: true,
+    description: '只有聰明的寵物才知道怎麼做。',
+    attribute: PetAttribute.fullness, value: 30,
+    extraEffects: {PetAttribute.health: 20, PetAttribute.mood: 20, PetAttribute.cleanliness: 10},
+  ),
+];
+
 final Map<String, ItemDef> _byId = {for (final i in itemCatalog) i.id: i};
 
 ItemDef? itemById(String id) => _byId[id];
@@ -131,7 +193,8 @@ ItemDef? itemById(String id) => _byId[id];
 /// 依稀有度權重抽一個道具。金額大小**不影響**結果（避免鼓勵消費）。
 ItemDef rollItemDrop(Random random) {
   final rarity = rollRarity(random);
-  final pool = itemCatalog.where((i) => i.rarity == rarity).toList();
+  final pool =
+      itemCatalog.where((i) => i.rarity == rarity && !i.craftedOnly).toList();
   return pool[random.nextInt(pool.length)];
 }
 
