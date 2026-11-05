@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../data/models.dart';
 import '../../domain/enums.dart';
+import '../../domain/evolution_diary.dart';
 import '../../domain/finance_rules.dart';
 import '../../domain/pet_rules.dart';
 import '../../domain/tasks.dart';
@@ -11,6 +12,7 @@ import '../../state/providers.dart';
 import '../ledger/add_transaction_sheet.dart';
 import '../more/bills_page.dart';
 import '../more/assets_page.dart';
+import 'diary_page.dart';
 import '../widgets/common.dart';
 
 class PetPage extends ConsumerWidget {
@@ -96,12 +98,24 @@ class _PetCardState extends ConsumerState<_PetCard> with SingleTickerProviderSta
                 child: GText(p.name,
                     style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               ),
+              IconButton(
+                tooltip: '寵物日記',
+                icon: const Icon(Icons.menu_book_outlined),
+                onPressed: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => const DiaryPage())),
+              ),
               Chip(
                 avatar: const Text('🧠'),
                 label: GText('智慧 Lv${st.wisdomLevel}'),
                 visualDensity: VisualDensity.compact,
               ),
             ]),
+            if (p.isEvolved)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GText('✨ ${evolvedForms[p.type]!.title}',
+                    style: TextStyle(color: Colors.amber.shade800, fontWeight: FontWeight.bold)),
+              ),
             GestureDetector(
               onTap: _poke,
               child: AnimatedBuilder(
@@ -143,6 +157,7 @@ class _PetCardState extends ConsumerState<_PetCard> with SingleTickerProviderSta
                 text: '${c.type.label}：${c.type.effect}'
                     '（${DateFormat('M/d').format(c.expiresAt)} 自動康復，或使用藥品）',
               ),
+            _EvolutionHint(pet: p),
             for (final a in PetAttribute.values)
               StatBar(
                 attribute: a,
@@ -154,6 +169,60 @@ class _PetCardState extends ConsumerState<_PetCard> with SingleTickerProviderSta
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 智慧 Lv4 以上才顯示進化進度，避免新手一開始就看到一堆條件。
+class _EvolutionHint extends ConsumerWidget {
+  const _EvolutionHint({required this.pet});
+  final Pet pet;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (pet.isEvolved || pet.stats.wisdomLevel < 4) return const SizedBox.shrink();
+    final now = ref.watch(servicesProvider).ctx.now();
+    final blockers =
+        evolutionBlockers(stats: pet.stats, createdAt: pet.createdAt, now: now, stage: pet.stage);
+    if (blockers.isNotEmpty) {
+      return _Banner(color: Colors.amber.shade800, icon: '🥚', text: '進化條件：${blockers.join('、')}');
+    }
+    final form = evolvedForms[pet.type]!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
+        onPressed: () async {
+          final ok = await confirmDialog(context,
+              title: '${pet.name} 準備好進化了！',
+              message: '進化成「${form.title}」${form.emoji}\n${form.description}\n\n理智上限 +$evolutionSanBonus。進化後無法還原。',
+              confirm: '進化！');
+          if (!ok || !context.mounted) return;
+          final f = await runAction(context, ref, (s) => s.pets.evolve());
+          if (f != null && context.mounted) {
+            await showDialog<void>(
+              context: context,
+              builder: (c) => AlertDialog(
+                title: Text('${pet.name} 進化成${f.title}了！'),
+                content: Column(mainAxisSize: MainAxisSize.min, children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 900),
+                    curve: Curves.elasticOut,
+                    builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                    child: Text(f.emoji, style: const TextStyle(fontSize: 96)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(f.description, textAlign: TextAlign.center),
+                ]),
+                actions: [FilledButton(onPressed: () => Navigator.pop(c), child: const Text('太棒了'))],
+              ),
+            );
+          }
+        },
+        icon: const Text('✨'),
+        label: const Text('可以進化了！'),
       ),
     );
   }
@@ -183,8 +252,11 @@ class _PetSprite extends StatelessWidget {
           ),
           Opacity(
             opacity: st.isInsane ? 0.55 : 1,
-            child: Text(pet.type.emoji, style: const TextStyle(fontSize: 96)),
+            child: Text(pet.isEvolved ? evolvedForms[pet.type]!.emoji : pet.type.emoji,
+                style: const TextStyle(fontSize: 96)),
           ),
+          if (pet.isEvolved && !st.isInsane)
+            const Positioned(top: 4, right: 30, child: Text('✨', style: TextStyle(fontSize: 28))),
           if (st.isInsane)
             const Positioned(top: 38, child: Text('◉  ◉', style: TextStyle(fontSize: 18, color: Colors.black54)))
           else if (sad)

@@ -3,6 +3,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 import '../data/models.dart';
 import '../domain/date_utils.dart';
 import '../domain/enums.dart';
+import '../domain/evolution_diary.dart';
 import '../domain/items.dart';
 import '../domain/pet_rules.dart';
 import '../domain/tasks.dart';
@@ -141,7 +142,10 @@ class PetService {
     var days = 0;
     await ctx.db.transaction((txn) async {
       while (cursor.isBefore(today)) {
-        stats = tickDay(stats, await _dayContext(txn, cursor, s.easyMode));
+        final dayCtx = await _dayContext(txn, cursor, s.easyMode);
+        final before = stats;
+        stats = tickDay(stats, dayCtx);
+        await _writeDiary(txn, pet, cursor, before, stats, dayCtx);
         cursor = DateTime(cursor.year, cursor.month, cursor.day + 1);
         days++;
       }
@@ -172,6 +176,85 @@ class PetService {
         for (final r in condRows) PetCondition.fromRow(r).type,
       },
     );
+  }
+
+  Future<void> _writeDiary(DatabaseExecutor ex, Pet pet, DateTime day,
+      PetStats before, PetStats after, DayContext dc) async {
+    final start = day.millisecondsSinceEpoch;
+    final end = DateTime(day.year, day.month, day.day + 1).millisecondsSinceEpoch;
+    final rows = await ex.rawQuery(
+      "SELECT category, SUM(amount) AS s, COUNT(*) AS n FROM transactions WHERE type = 'expense' "
+      'AND occurred_at >= ? AND occurred_at < ? GROUP BY category ORDER BY s DESC',
+      [start, end],
+    );
+    var total = 0;
+    var count = 0;
+    for (final r in rows) {
+      total += (r['s'] as num).toInt();
+      count += r['n'] as int;
+    }
+    final entry = writeDiary(DiaryInput(
+      date: day,
+      petName: pet.name,
+      stats: after,
+      expenseTotal: total,
+      expenseCount: count,
+      noSpend: dc.noSpendCheckIn,
+      sick: dc.conditions.isNotEmpty,
+      topCategory: rows.isEmpty ? null : Category.tryParse(rows.first['category'] as String),
+      becameInsane: !before.isInsane && after.isInsane,
+      recovered: before.isInsane && !after.isInsane,
+    ));
+    await ex.insert(
+      'pet_diary',
+      {'pet_id': pet.id, 'date': dateKey(day), 'text': entry.text, 'mood': entry.mood.name},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// 最新的日記在前。
+  Future<List<(String, DiaryEntry)>> diary({int limit = 60}) async {
+    final pet = await activePet();
+    if (pet == null) return const [];
+    final rows = await ctx.db.query('pet_diary',
+        where: 'pet_id = ?', whereArgs: [pet.id], orderBy: 'date DESC', limit: limit);
+    return [
+      for (final r in rows)
+        (
+          r['date'] as String,
+          DiaryEntry(r['text'] as String,
+              enumByName(DiaryMood.values, r['mood'] as String, DiaryMood.calm)),
+        ),
+    ];
+  }
+
+  // ---- 進化 ----
+
+  Future<List<String>> evolutionBlockersFor(Pet pet) async => evolutionBlockers(
+      stats: pet.stats, createdAt: pet.createdAt, now: ctx.now(), stage: pet.stage);
+
+  /// 進化：換外型、San 上限 +10。
+  Future<EvolvedForm> evolve() async {
+    late EvolvedForm form;
+    await ctx.db.transaction((txn) async {
+      final pet = await activePet(txn);
+      if (pet == null) throw const UserError('還沒有寵物');
+      final blockers = evolutionBlockers(
+          stats: pet.stats, createdAt: pet.createdAt, now: ctx.now(), stage: pet.stage);
+      if (blockers.isNotEmpty) throw UserError(blockers.join('、'));
+      form = evolvedForms[pet.type]!;
+      await txn.update(
+        'pets',
+        {
+          'stage': 1,
+          'evolved_at': ctx.nowMs(),
+          'base_san': pet.stats.baseSan + evolutionSanBonus,
+        },
+        where: 'id = ?',
+        whereArgs: [pet.id],
+      );
+    });
+    return form;
   }
 
   // ---- 互動 ----

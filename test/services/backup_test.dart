@@ -42,10 +42,9 @@ void main() {
     final (s, _) = await makeServices();
     await s.pets.createPet(name: '小咪', type: PetType.cat);
     final b = BackupService(s.ctx);
-    expect(() => b.importJson('not json'), throwsA(isA<UserError>()));
-    expect(() => b.importJson(jsonEncode({'format': 'other'})), throwsA(isA<UserError>()));
-    expect(
-      () => b.importJson(jsonEncode({'format': backupFormat, 'schemaVersion': 999, 'tables': {}})),
+    await expectLater(() => b.importJson('not json'), throwsA(isA<UserError>()));
+    await expectLater(() => b.importJson(jsonEncode({'format': 'other'})), throwsA(isA<UserError>()));
+    await expectLater(() => b.importJson(jsonEncode({'format': backupFormat, 'schemaVersion': 999, 'tables': {}})),
       throwsA(isA<UserError>()),
     );
     expect(await s.pets.activePet(), isNotNull);

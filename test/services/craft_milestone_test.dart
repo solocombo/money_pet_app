@@ -63,7 +63,7 @@ void main() {
       expect((await s.inventory.collection()).containsKey('bento'), isTrue);
       final t = (await s.tasks.statuses()).firstWhere((t) => t.def.id == TaskIds.firstCraft);
       expect(t.completed, isTrue);
-      expect(() => s.inventory.craft('r_bento'), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.craft('r_bento'), throwsA(isA<UserError>()));
       expect(await s.inventory.quantityOf('onigiri'), 1, reason: '失敗不扣材料');
     });
 
@@ -73,7 +73,7 @@ void main() {
       for (final id in ['unagi_don', 'chicken_soup', 'game_console']) {
         await s.ctx.db.insert('inventory', {'item_id': id, 'quantity': 1});
       }
-      expect(() => s.inventory.craft('r_feast'), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.craft('r_feast'), throwsA(isA<UserError>()));
       await s.ctx.db.update('pet_status', {'wisdom': 70});
       expect((await s.inventory.craft('r_feast')).id, 'feast');
     });
@@ -83,7 +83,7 @@ void main() {
       await s.pets.createPet(name: '小咪', type: PetType.cat);
       await s.ctx.db.insert('inventory', {'item_id': 'sticky_note', 'quantity': 3});
       await s.ctx.db.update('pet_status', {'is_insane': 1, 'san': 5});
-      expect(() => s.inventory.craft('r_study_plan'), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.craft('r_study_plan'), throwsA(isA<UserError>()));
     });
   });
 

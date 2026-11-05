@@ -58,11 +58,11 @@ void main() {
       expect(t.claimable, isTrue);
       await s.tasks.claim(t.def.id, t.period);
       expect(await s.wallet.coinBalance(), 50);
-      expect(() => s.tasks.claim(t.def.id, t.period), throwsA(isA<UserError>()));
+      await expectLater(() => s.tasks.claim(t.def.id, t.period), throwsA(isA<UserError>()));
     });
 
     test('未完成不能領', () async {
-      expect(() => s.tasks.claim(TaskIds.firstGoal, ''), throwsA(isA<UserError>()));
+      await expectLater(() => s.tasks.claim(TaskIds.firstGoal, ''), throwsA(isA<UserError>()));
     });
 
     test('每日簽到隔天重置', () async {
@@ -113,7 +113,7 @@ void main() {
 
   group('商店', () {
     test('金幣不足不能買', () async {
-      expect(() => s.inventory.buy(0), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.buy(0), throwsA(isA<UserError>()));
     });
 
     test('購買：扣金幣、進背包、每格每天一次', () async {
@@ -123,7 +123,7 @@ void main() {
       expect(item.id, slot.item.id);
       expect(await s.wallet.coinBalance(), 10000 - slot.price);
       expect(await s.inventory.quantityOf(item.id), 1);
-      expect(() => s.inventory.buy(0), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.buy(0), throwsA(isA<UserError>()));
       final states = await s.inventory.todayShop();
       expect(states.first.purchased, isTrue);
       final t = (await s.tasks.statuses()).firstWhere((t) => t.def.id == TaskIds.firstShop);
@@ -133,7 +133,7 @@ void main() {
     test('寵物失控時商店暫停營業', () async {
       await giveCoins(10000);
       await s.ctx.db.update('pet_status', {'is_insane': 1, 'san': 10});
-      expect(() => s.inventory.buy(0), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.buy(0), throwsA(isA<UserError>()));
     });
 
     test('賣出道具換金幣', () async {
@@ -141,7 +141,7 @@ void main() {
       final got = await s.inventory.sell('unagi_don');
       expect(got, 66);
       expect(await s.inventory.quantityOf('unagi_don'), 1);
-      expect(() => s.inventory.sell('unagi_don', qty: 5), throwsA(isA<UserError>()));
+      await expectLater(() => s.inventory.sell('unagi_don', qty: 5), throwsA(isA<UserError>()));
     });
 
     test('使用道具', () async {
@@ -149,7 +149,7 @@ void main() {
       final r = await s.pets.useItem('onigiri');
       expect(r.stats.fullness, 85);
       expect(await s.inventory.quantityOf('onigiri'), 0);
-      expect(() => s.pets.useItem('onigiri'), throwsA(isA<UserError>()));
+      await expectLater(() => s.pets.useItem('onigiri'), throwsA(isA<UserError>()));
     });
   });
 
@@ -164,12 +164,12 @@ void main() {
     test('PT 不足不能兌換；足夠就扣 PT', () async {
       await s.rewards.addReward('吃大餐', 5000);
       final r = (await s.rewards.rewards()).single;
-      expect(() => s.rewards.redeem(r.id), throwsA(isA<UserError>()));
+      await expectLater(() => s.rewards.redeem(r.id), throwsA(isA<UserError>()));
       await givePt(6000);
       await s.rewards.redeem(r.id);
       expect(await s.wallet.ptBalanceDeci(), 1000);
       expect((await s.rewards.rewards()).single.isRedeemed, isTrue);
-      expect(() => s.rewards.redeem(r.id), throwsA(isA<UserError>()));
+      await expectLater(() => s.rewards.redeem(r.id), throwsA(isA<UserError>()));
     });
 
     test('PT → 金幣：1 PT = 10 金幣，單向', () async {
@@ -177,7 +177,7 @@ void main() {
       await s.wallet.convertPtToCoins(100);
       expect(await s.wallet.ptBalanceDeci(), 0);
       expect(await s.wallet.coinBalance(), 100);
-      expect(() => s.wallet.convertPtToCoins(1), throwsA(isA<UserError>()));
+      await expectLater(() => s.wallet.convertPtToCoins(1), throwsA(isA<UserError>()));
     });
 
     test('轉換金幣不會吃掉每月上限額度', () async {
@@ -190,7 +190,7 @@ void main() {
       await s.rewards.addGoal(name: '本週不喝飲料', ptRewardDeci: 300, deadline: DateTime(2026, 5, 12));
       clock.set(DateTime(2026, 5, 13, 9));
       final g = (await s.rewards.goals()).single;
-      expect(() => s.rewards.completeGoal(g.id), throwsA(isA<UserError>()));
+      await expectLater(() => s.rewards.completeGoal(g.id), throwsA(isA<UserError>()));
     });
   });
 
@@ -226,7 +226,7 @@ void main() {
       expect(soon, isEmpty);
       final up = await s.bills.upcoming();
       expect(up.single.dueDate, DateTime(2026, 6, 12));
-      expect(() => s.bills.markPaid(BillDue(bill: up.single.bill, dueDate: DateTime(2026, 5, 12), isPaid: true), amount: 390),
+      await expectLater(() => s.bills.markPaid(BillDue(bill: up.single.bill, dueDate: DateTime(2026, 5, 12), isPaid: true), amount: 390),
           throwsA(isA<UserError>()));
     });
 

@@ -46,8 +46,7 @@ void main() {
     });
 
     test('省下金額超過消費金額 → 拒絕', () async {
-      expect(
-        () => s.ledger.addExpense(category: Category.dining, amount: 100, savedAmount: 101),
+      await expectLater(() => s.ledger.addExpense(category: Category.dining, amount: 100, savedAmount: 101),
         throwsA(isA<UserError>()),
       );
     });
@@ -132,12 +131,12 @@ void main() {
 
     test('已有支出不能打卡', () async {
       await s.ledger.addExpense(category: Category.dining, amount: 100);
-      expect(() => s.ledger.checkInNoSpend(), throwsA(isA<UserError>()));
+      await expectLater(() => s.ledger.checkInNoSpend(), throwsA(isA<UserError>()));
     });
 
     test('同一天不能打卡兩次', () async {
       await s.ledger.checkInNoSpend();
-      expect(() => s.ledger.checkInNoSpend(), throwsA(isA<UserError>()));
+      await expectLater(() => s.ledger.checkInNoSpend(), throwsA(isA<UserError>()));
     });
 
     test('打卡後又記支出 → 取消打卡並收回金幣', () async {
@@ -291,8 +290,7 @@ void main() {
 
     test('省下金額不能超過新金額', () async {
       final o = await s.ledger.addExpense(category: Category.dining, amount: 500, savedAmount: 50);
-      expect(
-        () => s.ledger.updateTransaction(o.txn.id,
+      await expectLater(() => s.ledger.updateTransaction(o.txn.id,
             categoryName: Category.dining.name, amount: 30, savedAmount: 50, occurredAt: o.txn.occurredAt),
         throwsA(isA<UserError>()),
       );
@@ -308,8 +306,7 @@ void main() {
   });
 
   test('不能記未來的帳', () async {
-    expect(
-      () => s.ledger.addExpense(
+    await expectLater(() => s.ledger.addExpense(
           category: Category.dining, amount: 1, occurredAt: DateTime(2026, 5, 11)),
       throwsA(isA<UserError>()),
     );

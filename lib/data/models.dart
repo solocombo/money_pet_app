@@ -14,6 +14,8 @@ class Pet {
     required this.stats,
     required this.lastTickDate,
     required this.createdAt,
+    this.stage = 0,
+    this.evolvedAt,
   });
 
   final String id;
@@ -23,6 +25,12 @@ class Pet {
   final String lastTickDate;
   final DateTime createdAt;
 
+  /// 0 = 基本形態，1 = 進化後。
+  final int stage;
+  final DateTime? evolvedAt;
+
+  bool get isEvolved => stage > 0;
+
   factory Pet.fromRow(Map<String, Object?> r) {
     final type = enumByName(PetType.values, r['type'] as String, PetType.cat);
     return Pet(
@@ -30,6 +38,8 @@ class Pet {
       name: r['name'] as String,
       type: type,
       createdAt: _ms(r['created_at']),
+      stage: (r['stage'] as int?) ?? 0,
+      evolvedAt: _msOrNull(r['evolved_at']),
       lastTickDate: r['last_tick_date'] as String,
       stats: PetStats(
         fullness: (r['fullness'] as num).toDouble(),

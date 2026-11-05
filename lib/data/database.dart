@@ -10,7 +10,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 /// - enum 以 name 字串儲存。
 ///
 /// 改 schema 時：把 [schemaVersion] +1，並在 [_migrations] 加上對應步驟。
-const int schemaVersion = 1;
+const int schemaVersion = 2;
 
 const String databaseFileName = 'money_pet.db';
 
@@ -36,7 +36,21 @@ Future<void> onConfigureDatabase(Database db) async {
   await db.execute('PRAGMA foreign_keys = ON');
 }
 
-final Map<int, Future<void> Function(Database)> _migrations = {};
+final Map<int, Future<void> Function(Database)> _migrations = {
+  // v2：寵物進化 + 寵物日記
+  2: (db) async {
+    await db.execute('ALTER TABLE pets ADD COLUMN stage INTEGER NOT NULL DEFAULT 0');
+    await db.execute('ALTER TABLE pets ADD COLUMN evolved_at INTEGER');
+    await db.execute('''
+      CREATE TABLE pet_diary (
+        pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+        date   TEXT NOT NULL,
+        text   TEXT NOT NULL,
+        mood   TEXT NOT NULL,
+        PRIMARY KEY (pet_id, date)
+      )''');
+  },
+};
 
 /// 清除所有資料時要清空的表（依外鍵相依順序，子表在前）。
 const List<String> allTables = [
@@ -59,6 +73,7 @@ const List<String> allTables = [
   'no_spend_days',
   'transactions',
   'payment_methods',
+  'pet_diary',
   'pet_conditions',
   'pet_status',
   'pets',
