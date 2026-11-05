@@ -330,7 +330,7 @@ class _RecentTransactions extends ConsumerWidget {
       else
         Card(
           child: Column(children: [
-            for (final t in list) TxnTile(txn: t),
+            for (final t in list) TxnTile(txn: t, onTap: () => showEditTransaction(context, t)),
           ]),
         ),
     ]);
@@ -339,8 +339,9 @@ class _RecentTransactions extends ConsumerWidget {
 
 /// 交易列（記帳頁共用）。金額與內容**不套用亂碼**。
 class TxnTile extends StatelessWidget {
-  const TxnTile({super.key, required this.txn, this.onLongPress});
+  const TxnTile({super.key, required this.txn, this.onTap, this.onLongPress});
   final Txn txn;
+  final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
   @override
@@ -358,6 +359,7 @@ class TxnTile extends StatelessWidget {
       subtitle: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Text('$sign${formatMoney(txn.amount)}',
           style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+      onTap: onTap,
       onLongPress: onLongPress,
     );
   }

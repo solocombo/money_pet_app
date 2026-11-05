@@ -311,6 +311,112 @@ class LedgerService {
     return true;
   }
 
+  /// 編輯交易。PT 會依新內容重算（先退回舊的、再發新的，月上限也跟著正確）。
+  /// **不會**重新掉道具、也不會觸發 San check（避免靠編輯刷）。
+  /// 回傳新的 PT 與是否觸發生病。
+  Future<RecordOutcome> updateTransaction(
+    String id, {
+    required String categoryName,
+    required int amount,
+    int savedAmount = 0,
+    String? paymentMethodId,
+    String? note,
+    required DateTime occurredAt,
+  }) async {
+    if (amount <= 0) throw const UserError('金額要大於 0');
+    final now = ctx.now();
+    if (occurredAt.isAfter(now.add(const Duration(minutes: 5)))) {
+      throw const UserError('不能記未來的帳');
+    }
+    final s = await settings.load();
+    late RecordOutcome outcome;
+    await ctx.db.transaction((txn) async {
+      final rows = await txn.query('transactions', where: 'id = ?', whereArgs: [id]);
+      if (rows.isEmpty) throw const UserError('找不到這筆紀錄');
+      final old = Txn.fromRow(rows.first);
+      final isExpense = old.isExpense;
+      final category = isExpense ? Category.tryParse(categoryName) : null;
+      if (isExpense && category == null) throw const UserError('類別不正確');
+      final saved = isExpense ? savedAmount : 0;
+      final err = validateSavedAmount(amount: amount, saved: saved);
+      if (err != null) throw UserError(err);
+
+      if (old.ptAwardedDeci > 0) {
+        await txn.insert('pt_log', {
+          'source': PtSource.reversal.name,
+          'amount': -old.ptAwardedDeci,
+          'period': monthKey(old.occurredAt),
+          'note': '編輯交易',
+          'ref_id': id,
+          'created_at': ctx.nowMs(),
+        });
+      }
+      await txn.update(
+        'transactions',
+        {
+          'category': categoryName,
+          'amount': amount,
+          'saved_amount': saved,
+          'payment_method_id': paymentMethodId,
+          'note': (note?.trim().isEmpty ?? true) ? null : note!.trim(),
+          'occurred_at': occurredAt.millisecondsSinceEpoch,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      var cancelledNoSpend = false;
+      if (isExpense) cancelledNoSpend = await _cancelNoSpend(txn, dateKey(occurredAt));
+
+      final month = monthKey(occurredAt);
+      final budgets = await budgetsFor(month, txn);
+      final pastMonth = month != monthKey(now);
+      var requested = 0;
+      var awarded = 0;
+      if (!budgets.isEmpty && !pastMonth) {
+        requested = isExpense
+            ? ptFromAmount(saved, s.ptRates.savedAmount)
+            : ptFromAmount(amount, s.ptRates.income);
+        awarded = await wallet.addPt(
+          txn,
+          isExpense ? PtSource.saved : PtSource.income,
+          requested,
+          period: month,
+          rates: s.ptRates,
+          refId: id,
+          note: '編輯交易',
+        );
+      }
+      await txn.update('transactions', {'pt_awarded': awarded},
+          where: 'id = ?', whereArgs: [id]);
+
+      ConditionType? newCondition;
+      if (isExpense && !pastMonth) {
+        final group = category!.group;
+        final groupBudget = budgets.groups[group];
+        if (groupBudget != null &&
+            isOverspent(
+                budget: groupBudget,
+                actual: await _groupSpent(txn, group, month),
+                threshold: s.overspendThreshold)) {
+          newCondition = await pets.triggerOverspendCondition(txn, group, month);
+        }
+      }
+
+      final row = (await txn.query('transactions', where: 'id = ?', whereArgs: [id])).first;
+      outcome = RecordOutcome(
+        txn: Txn.fromRow(row),
+        ptAwardedDeci: awarded,
+        ptRequestedDeci: requested,
+        noBudget: budgets.isEmpty,
+        pastMonth: pastMonth,
+        newCondition: newCondition,
+        cancelledNoSpend: cancelledNoSpend,
+      );
+    });
+    return outcome;
+  }
+
   /// 刪除交易：退回這筆發的 PT，背包裡還有的話也收回掉落的道具。
   Future<void> deleteTransaction(String id) async {
     await ctx.db.transaction((txn) async {

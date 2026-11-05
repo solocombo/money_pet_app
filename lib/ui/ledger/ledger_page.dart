@@ -82,14 +82,18 @@ class _LedgerPageState extends ConsumerState<LedgerPage> {
                     confirmDismiss: (_) => _confirmDelete(t),
                     onDismissed: (_) =>
                         runAction(context, ref, (s) => s.ledger.deleteTransaction(t.id)),
-                    child: TxnTile(txn: t, onLongPress: () => _deleteViaDialog(t)),
+                    child: TxnTile(
+                      txn: t,
+                      onTap: () => showEditTransaction(context, t),
+                      onLongPress: () => _deleteViaDialog(t),
+                    ),
                   ),
               ]),
             );
           }),
           const Padding(
             padding: EdgeInsets.all(16),
-            child: Text('左滑或長按可以刪除。刪除會退回該筆獲得的 PT，若道具還在背包也會收回。',
+            child: Text('點一下可以編輯，左滑或長按可以刪除。刪除會退回該筆獲得的 PT，若道具還在背包也會收回。',
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
           ),
         ],

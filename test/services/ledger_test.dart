@@ -266,6 +266,47 @@ void main() {
     });
   });
 
+  group('編輯交易', () {
+    setUp(() => s.ledger.setBudget('2026-05', CategoryGroup.food, 1000));
+
+    test('PT 依新的省下金額重算，不重複掉道具', () async {
+      final o = await s.ledger.addExpense(category: Category.dining, amount: 500, savedAmount: 50);
+      expect(await s.wallet.ptBalanceDeci(), 50);
+      final itemsBefore = (await s.inventory.list()).fold<int>(0, (a, e) => a + e.quantity);
+      final e = await s.ledger.updateTransaction(o.txn.id,
+          categoryName: Category.dining.name, amount: 500, savedAmount: 100, occurredAt: o.txn.occurredAt);
+      expect(e.ptAwardedDeci, 100);
+      expect(await s.wallet.ptBalanceDeci(), 100);
+      expect(await s.wallet.cappedEarnedInPeriod('2026-05'), 100);
+      final itemsAfter = (await s.inventory.list()).fold<int>(0, (a, e) => a + e.quantity);
+      expect(itemsAfter, itemsBefore);
+    });
+
+    test('改大金額造成超支 → 生病', () async {
+      final o = await s.ledger.addExpense(category: Category.dining, amount: 100);
+      final e = await s.ledger.updateTransaction(o.txn.id,
+          categoryName: Category.dining.name, amount: 5000, occurredAt: o.txn.occurredAt);
+      expect(e.newCondition, ConditionType.gastroenteritis);
+    });
+
+    test('省下金額不能超過新金額', () async {
+      final o = await s.ledger.addExpense(category: Category.dining, amount: 500, savedAmount: 50);
+      expect(
+        () => s.ledger.updateTransaction(o.txn.id,
+            categoryName: Category.dining.name, amount: 30, savedAmount: 50, occurredAt: o.txn.occurredAt),
+        throwsA(isA<UserError>()),
+      );
+    });
+
+    test('改到上個月 → PT 退回', () async {
+      final o = await s.ledger.addIncome(category: IncomeCategory.salary, amount: 10000);
+      expect(await s.wallet.ptBalanceDeci(), 1000);
+      await s.ledger.updateTransaction(o.txn.id,
+          categoryName: IncomeCategory.salary.name, amount: 10000, occurredAt: DateTime(2026, 4, 30, 12));
+      expect(await s.wallet.ptBalanceDeci(), 0);
+    });
+  });
+
   test('不能記未來的帳', () async {
     expect(
       () => s.ledger.addExpense(

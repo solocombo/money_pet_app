@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/models.dart';
 import '../../domain/enums.dart';
 import '../../domain/items.dart';
 import '../../domain/pt_rules.dart';
@@ -25,9 +26,27 @@ Future<RecordOutcome?> showAddTransaction(BuildContext context,
   return outcome;
 }
 
+/// 編輯既有交易（不會重新掉道具）。
+Future<void> showEditTransaction(BuildContext context, Txn txn) async {
+  final outcome = await Navigator.of(context).push<RecordOutcome>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => AddTransactionPage(editing: txn),
+    ),
+  );
+  if (outcome == null || !context.mounted) return;
+  final notes = <String>[
+    if (outcome.ptAwardedDeci != txn.ptAwardedDeci)
+      'PT ${formatPt(txn.ptAwardedDeci)} → ${formatPt(outcome.ptAwardedDeci)}',
+    if (outcome.newCondition != null) '類別超支，寵物得了「${outcome.newCondition!.label}」',
+  ];
+  toast(context, notes.isEmpty ? '已更新' : '已更新：${notes.join('、')}');
+}
+
 class AddTransactionPage extends ConsumerStatefulWidget {
-  const AddTransactionPage({super.key, this.initialCategory});
+  const AddTransactionPage({super.key, this.initialCategory, this.editing});
   final Category? initialCategory;
+  final Txn? editing;
 
   @override
   ConsumerState<AddTransactionPage> createState() => _AddTransactionPageState();
@@ -43,6 +62,24 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   String? _paymentId;
   DateTime? _date; // null = 現在
   var _saving = false;
+
+  bool get _isEdit => widget.editing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.editing;
+    if (e != null) {
+      _type = e.type;
+      if (e.category != null) _category = e.category!;
+      if (e.incomeCategory != null) _income = e.incomeCategory!;
+      _amount.text = e.amount.toString();
+      if (e.savedAmount > 0) _saved.text = e.savedAmount.toString();
+      _note.text = e.note ?? '';
+      _paymentId = e.paymentMethodId;
+      _date = e.occurredAt;
+    }
+  }
 
   @override
   void dispose() {
@@ -68,7 +105,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     }
     setState(() => _saving = true);
     DateTime? at;
-    if (_date != null) {
+    final editing = widget.editing;
+    if (editing != null && _date != null && DateUtils.isSameDay(_date, editing.occurredAt)) {
+      at = editing.occurredAt; // 沒改日期就保留原本時間
+    } else if (_date != null) {
       final now = DateTime.now();
       // 補記過去日期時，時間用中午，避免被誤判為深夜記帳。
       at = DateUtils.isSameDay(_date, now)
@@ -76,6 +116,17 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           : DateTime(_date!.year, _date!.month, _date!.day, 12);
     }
     final outcome = await runAction(context, ref, (s) {
+      if (editing != null) {
+        return s.ledger.updateTransaction(
+          editing.id,
+          categoryName: _isExpense ? _category.name : _income.name,
+          amount: amount,
+          savedAmount: _isExpense ? saved : 0,
+          paymentMethodId: _paymentId,
+          note: _note.text,
+          occurredAt: at ?? DateTime.now(),
+        );
+      }
       return _isExpense
           ? s.ledger.addExpense(
               category: _category,
@@ -108,7 +159,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('記一筆'),
+        title: Text(_isEdit ? '編輯紀錄' : '記一筆'),
         actions: [
           TextButton(
             onPressed: _saving ? null : _submit,
@@ -119,7 +170,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          SegmentedButton<TransactionType>(
+          if (!_isEdit) SegmentedButton<TransactionType>(
             segments: const [
               ButtonSegment(value: TransactionType.expense, label: Text('支出'), icon: Icon(Icons.remove)),
               ButtonSegment(value: TransactionType.income, label: Text('收入'), icon: Icon(Icons.add)),
@@ -130,7 +181,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           const SizedBox(height: 16),
           TextField(
             controller: _amount,
-            autofocus: true,
+            autofocus: !_isEdit,
             keyboardType: TextInputType.number,
             inputFormatters: digitsOnly,
             style: Theme.of(context).textTheme.headlineMedium,
