@@ -37,7 +37,17 @@ keytool -genkey -v -keystore ~/money-pet-upload.jks -keyalg RSA -keysize 2048 -v
   - `ios/Runner/Info.plist`（APP ID）
 - [ ] 開發期間**不要點自己的正式廣告**，會被停權
 
-## 4. 隱私權政策
+## 4. 付費進階版
+
+- [ ] Play Console → 營利 → 產品 → **應用程式內產品**，建立：
+  - 產品 ID：`premium_unlock`（必須完全一致，寫在 `lib/services/premium_service.dart`）
+  - 類型：一次性（非消耗性）
+  - 價格：NT$90
+- [ ] 需要先上傳一版 APK/AAB 到測試軌道，商品才能啟用
+- [ ] 用「授權測試人員」帳號測試購買（不會真的扣款）
+- [ ] iOS 的話在 App Store Connect 建立同 ID 的 Non-Consumable
+
+## 5. 隱私權政策
 
 - [ ] 在 `docs/privacy.md` 最後填入聯絡信箱
 - [ ] GitHub repo → Settings → Pages → Source 選 `main` / `docs`，就會有公開網址：
@@ -45,7 +55,7 @@ keytool -genkey -v -keystore ~/money-pet-upload.jks -keyalg RSA -keysize 2048 -v
   （repo 是 private 的話 Pages 需要付費方案；也可以把 privacy.md 貼到 Notion 公開頁）
 - [ ] Play Console 填入這個網址
 
-## 5. Google Play Console
+## 6. Google Play Console
 
 - [ ] 註冊開發者帳號（一次性 US$25）
 - [ ] 建立應用程式，套件名稱：`com.solocombo.money_pet_app`（**上架後不能改**，想換現在講）
@@ -58,7 +68,7 @@ keytool -genkey -v -keystore ~/money-pet-upload.jks -keyalg RSA -keysize 2048 -v
 - [ ] 目標對象：18 歲以上（避免家庭政策審查）
 - [ ] 先上「內部測試」軌道
 
-## 6. 素材
+## 7. 素材
 
 - [ ] 正式 APP icon（目前是 emoji 暫代）
 - [ ] 寵物圖（目前是 emoji，可換 itch.io 像素素材，記得確認授權可商用）
@@ -70,4 +80,3 @@ keytool -genkey -v -keystore ~/money-pet-upload.jks -keyalg RSA -keysize 2048 -v
 |---|---|
 | Google Drive 自動備份 | Google Cloud 專案、OAuth 同意畫面、Android OAuth client（需要簽章 SHA-1） |
 | FCM 全體推播 | Firebase 專案，下載 `google-services.json` |
-| 付費進階版（NT$90） | Play Console 建立「一次性購買」商品 |
