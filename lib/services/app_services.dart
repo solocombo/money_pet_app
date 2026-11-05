@@ -4,6 +4,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 
 import '../data/database.dart';
 import '../domain/pt_rules.dart';
+import 'ad_reward_service.dart';
 import 'asset_service.dart';
 import 'bill_service.dart';
 import 'context.dart';
@@ -40,6 +41,7 @@ class AppServices {
     rewards = RewardService(ctx, settings, wallet, tasks);
     assets = AssetService(ctx, tasks);
     bills = BillService(ctx, ledger);
+    ads = AdRewardService(ctx, settings, wallet);
   }
 
   factory AppServices(Database db, {DateTime Function()? clock, Random? random}) =>
@@ -55,6 +57,7 @@ class AppServices {
   late final RewardService rewards;
   late final AssetService assets;
   late final BillService bills;
+  late final AdRewardService ads;
 
   /// 啟動 / 回到前景時呼叫：推進寵物時間、沿用預算、結算上個月。
   /// 順序：先沿用預算（影響本月 PT），再結算過去月份，最後推進寵物。

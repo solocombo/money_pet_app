@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_settings.dart';
 import '../data/models.dart';
 import '../domain/date_utils.dart';
+import '../services/ad_reward_service.dart';
 import '../services/app_services.dart';
 import '../services/bill_service.dart';
 import '../services/context.dart';
@@ -23,6 +24,12 @@ final notificationSchedulerProvider =
 
 final notificationServiceProvider = Provider<NotificationService>((ref) =>
     NotificationService(ref.watch(servicesProvider), ref.watch(notificationSchedulerProvider)));
+
+/// 激勵式廣告。main() 會換成 AdMob 版本。
+final adGatewayProvider = Provider<RewardedAdGateway>((ref) => FakeAdGateway());
+
+final adCoinsRemainingProvider =
+    _q<int>((s) => s.ads.remaining(AdRewardKind.coins));
 
 /// 資料版本號。任何寫入後 +1，所有讀取 provider 都會重新查詢。
 /// 資料量小（純本地），這樣比精細追蹤每張表簡單且不易出錯。

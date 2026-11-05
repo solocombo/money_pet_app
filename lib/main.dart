@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'data/db_open.dart';
+import 'platform/admob.dart';
 import 'platform/local_notifications.dart';
 import 'services/app_services.dart';
 import 'state/providers.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
     overrides: [
       servicesProvider.overrideWithValue(services),
       notificationSchedulerProvider.overrideWithValue(LocalNotificationScheduler()),
+      adGatewayProvider.overrideWithValue(AdMobGateway()),
     ],
     child: const MoneyPetApp(),
   ));

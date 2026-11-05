@@ -348,7 +348,7 @@ Future<void> showRecordOutcome(BuildContext context, RecordOutcome o) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (o.droppedItem != null) _ItemDrop(item: o.droppedItem!),
+            if (o.droppedItem != null) _DropWithReroll(txnId: o.txn.id, item: o.droppedItem!),
             ...lines,
           ],
         ),
@@ -358,8 +358,67 @@ Future<void> showRecordOutcome(BuildContext context, RecordOutcome o) {
   );
 }
 
+/// 掉落道具 +「看廣告重抽」（每天 2 次）。
+class _DropWithReroll extends ConsumerStatefulWidget {
+  const _DropWithReroll({required this.txnId, required this.item});
+  final String txnId;
+  final ItemDef item;
+  @override
+  ConsumerState<_DropWithReroll> createState() => _DropWithRerollState();
+}
+
+class _DropWithRerollState extends ConsumerState<_DropWithReroll> {
+  late ItemDef _item = widget.item;
+  var _canReroll = false;
+  var _busy = false;
+  var _round = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final ok = await ref.read(servicesProvider).ads.canReroll(widget.txnId);
+    if (mounted) setState(() => _canReroll = ok);
+  }
+
+  Future<void> _reroll() async {
+    setState(() => _busy = true);
+    final watched = await ref.read(adGatewayProvider).show();
+    if (!mounted) return;
+    if (!watched) {
+      setState(() => _busy = false);
+      toast(context, '廣告沒有看完或暫時無法載入');
+      return;
+    }
+    final next = await runAction(context, ref, (s) => s.ads.reroll(widget.txnId));
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (next != null) {
+        _item = next;
+        _round++;
+      }
+    });
+    await _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+        _ItemDrop(key: ValueKey(_round), item: _item),
+        if (_canReroll)
+          TextButton.icon(
+            onPressed: _busy ? null : _reroll,
+            icon: const Text('📺'),
+            label: const Text('不喜歡？看廣告重抽'),
+          ),
+      ]);
+}
+
 class _ItemDrop extends StatelessWidget {
-  const _ItemDrop({required this.item});
+  const _ItemDrop({super.key, required this.item});
   final ItemDef item;
 
   @override

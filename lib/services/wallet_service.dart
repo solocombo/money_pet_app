@@ -20,7 +20,7 @@ enum PtSource {
   final bool capped;
 }
 
-enum CoinSource { task, noSpend, shop, sell, convert, reversal }
+enum CoinSource { task, noSpend, shop, sell, convert, reversal, ad }
 
 /// 金幣與 PT。餘額 = log 加總，log 是唯一真相來源。
 class WalletService {

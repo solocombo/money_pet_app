@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../domain/enums.dart';
 import '../../domain/items.dart';
 import '../../domain/recipes.dart';
+import '../../services/ad_reward_service.dart';
 import '../../services/inventory_service.dart';
 import '../../state/providers.dart';
 import '../widgets/common.dart';
@@ -239,6 +240,7 @@ class _Shop extends ConsumerWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
+        const _AdCoinsCard(),
         for (final st in slots) _ShopTile(state: st, disabled: insane),
         const Padding(
           padding: EdgeInsets.all(16),
@@ -247,6 +249,37 @@ class _Shop extends ConsumerWidget {
         ),
       ]);
     });
+  }
+}
+
+class _AdCoinsCard extends ConsumerWidget {
+  const _AdCoinsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final left = ref.watch(adCoinsRemainingProvider).value ?? 0;
+    return Card(
+      child: ListTile(
+        leading: const Text('📺', style: TextStyle(fontSize: 26)),
+        title: const Text('看廣告領金幣'),
+        subtitle: Text('每次 🪙 $adCoinReward，今天還剩 $left 次（完全自願）'),
+        trailing: FilledButton.tonal(
+          onPressed: left <= 0
+              ? null
+              : () async {
+                  final watched = await ref.read(adGatewayProvider).show();
+                  if (!context.mounted) return;
+                  if (!watched) {
+                    toast(context, '廣告沒有看完或暫時無法載入，等等再試試');
+                    return;
+                  }
+                  await runAction(context, ref, (s) => s.ads.claimCoins(),
+                      successMessage: '謝謝支持！🪙 +$adCoinReward');
+                },
+          child: const Text('觀看'),
+        ),
+      ),
+    );
   }
 }
 
