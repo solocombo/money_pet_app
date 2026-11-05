@@ -13,6 +13,7 @@ import '../ledger/add_transaction_sheet.dart';
 import '../more/bills_page.dart';
 import '../more/assets_page.dart';
 import 'diary_page.dart';
+import 'share_card.dart';
 import '../widgets/common.dart';
 
 class PetPage extends ConsumerWidget {
@@ -97,6 +98,11 @@ class _PetCardState extends ConsumerState<_PetCard> with SingleTickerProviderSta
               Expanded(
                 child: GText(p.name,
                     style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              ),
+              IconButton(
+                tooltip: '分享',
+                icon: const Icon(Icons.ios_share),
+                onPressed: () => showShareCard(context, ref, p),
               ),
               IconButton(
                 tooltip: '寵物日記',
