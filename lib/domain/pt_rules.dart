@@ -104,6 +104,9 @@ class CategorySettlement {
   int get saved => budget > actual ? budget - actual : 0;
 }
 
+/// 預算暴擊：總額省下至少這個比例，且沒有任何類別超支 → 結算 PT 加倍。
+const double budgetCritSavingRatio = 0.2;
+
 class MonthSettlement {
   const MonthSettlement({
     required this.categories,
@@ -111,6 +114,7 @@ class MonthSettlement {
     required this.totalActual,
     required this.totalPtDeci,
     required this.noPtPenalty,
+    this.budgetCrit = false,
   });
 
   final List<CategorySettlement> categories;
@@ -121,10 +125,14 @@ class MonthSettlement {
   /// 超過半數有預算的類別同時超支 → 當月無法獲得任何結算 PT。
   final bool noPtPenalty;
 
-  /// 套用懲罰後、套用上限前的結算 PT。
+  /// 預算暴擊（雙倍 PT）。
+  final bool budgetCrit;
+
+  /// 套用懲罰與暴擊後、套用上限前的結算 PT。
   int get grossPtDeci {
     if (noPtPenalty) return 0;
-    return categories.fold<int>(0, (s, c) => s + c.ptDeci) + totalPtDeci;
+    final base = categories.fold<int>(0, (s, c) => s + c.ptDeci) + totalPtDeci;
+    return budgetCrit ? base * 2 : base;
   }
 
   /// 兩層都有省到 → 雙重獎勵（用於 UI 提示）。
@@ -169,6 +177,11 @@ MonthSettlement settleMonth({
 
   final overspentCount = cats.where((c) => c.overspent).length;
   final penalty = cats.isNotEmpty && overspentCount * 2 > cats.length;
+  final crit = !penalty &&
+      overspentCount == 0 &&
+      totalBudget != null &&
+      totalBudget > 0 &&
+      totalBudget - totalActual >= totalBudget * budgetCritSavingRatio;
 
   return MonthSettlement(
     categories: cats,
@@ -176,6 +189,7 @@ MonthSettlement settleMonth({
     totalActual: totalActual,
     totalPtDeci: totalPt,
     noPtPenalty: penalty,
+    budgetCrit: crit,
   );
 }
 

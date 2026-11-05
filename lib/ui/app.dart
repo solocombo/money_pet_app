@@ -104,6 +104,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
                 if (r.totalBudget != null)
                   Text('總額：${r.totalPtDeci > 0 ? '省下 → ${formatPt(r.totalPtDeci)} PT' : '沒有省到'}'),
                 if (r.isDoubleReward) const Text('🎊 兩層都省到，雙重獎勵！'),
+                if (r.budgetCrit) const Text('💥 預算暴擊！省下超過兩成，結算 PT 加倍！'),
                 const SizedBox(height: 4),
                 Text('獲得 ⭐ ${formatPt(awarded)} PT'
                     '${awarded < r.grossPtDeci ? '（已達每月上限）' : ''}'),

@@ -40,6 +40,7 @@ class BudgetPage extends ConsumerWidget {
             child: Text(
               '• 有設預算才會獲得 PT（收入、省下金額、月底結算）。\n'
               '• 月底結算：每個類別省下的錢 × 0.1、總額省下的錢再 × 0.1，兩層都省到就是雙重獎勵。\n'
+              '• 💥 預算暴擊：總額省下兩成以上、而且沒有類別超支，結算 PT 加倍！\n'
               '• 單一類別超支 $threshold% 以上，寵物會生病；超過半數類別超支，當月結算拿不到 PT。\n'
               '• 下個月沒設定時，會自動沿用這個月的預算。',
               style: Theme.of(context).textTheme.bodySmall,

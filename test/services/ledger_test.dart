@@ -214,9 +214,10 @@ void main() {
       expect(report.settlements.length, 1);
       final (month, result, awarded) = report.settlements.single;
       expect(month, '2026-05');
-      // 類別：3000-2000=1000 → 100 PT；總額：10000-3000=7000 → 700 PT
-      expect(result.grossPtDeci, 8000);
-      expect(awarded, 8000);
+      // 類別：3000-2000=1000 → 100 PT；總額：10000-3000=7000 → 700 PT；省 70% → 暴擊 ×2
+      expect(result.budgetCrit, isTrue);
+      expect(result.grossPtDeci, 16000);
+      expect(awarded, 16000);
       expect(report.budgetsCarriedOver, isTrue);
 
       // 不會重複結算

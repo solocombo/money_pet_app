@@ -66,17 +66,41 @@ void main() {
     test('兩層都省到：雙重獎勵', () {
       final r = settleMonth(
         groupBudgets: {CategoryGroup.food: 5000, CategoryGroup.entertainment: 2000},
-        totalBudget: 10000,
+        totalBudget: 6000,
         actualByGroup: {CategoryGroup.food: 4000, CategoryGroup.entertainment: 1500},
         threshold: 0.2,
         rates: rates,
       );
-      // 類別：省 1000 → 100 PT、省 500 → 50 PT；總額：省 4500 → 450 PT
+      // 類別：省 1000 → 100 PT、省 500 → 50 PT；總額：省 500 → 50 PT（省 8% 沒暴擊）
       expect(r.categories.map((c) => c.ptDeci), [1000, 500]);
-      expect(r.totalPtDeci, 4500);
-      expect(r.grossPtDeci, 6000);
+      expect(r.totalPtDeci, 500);
+      expect(r.budgetCrit, isFalse);
+      expect(r.grossPtDeci, 2000);
       expect(r.isDoubleReward, isTrue);
       expect(r.noPtPenalty, isFalse);
+    });
+
+    test('預算暴擊：總額省 20% 以上且沒有類別超支 → 雙倍', () {
+      final r = settleMonth(
+        groupBudgets: {CategoryGroup.food: 5000},
+        totalBudget: 10000,
+        actualByGroup: {CategoryGroup.food: 4000, CategoryGroup.transport: 4000},
+        threshold: 0.2,
+        rates: rates,
+      );
+      expect(r.budgetCrit, isTrue);
+      expect(r.grossPtDeci, (1000 + 2000) * 2);
+    });
+
+    test('有類別超支就沒有暴擊', () {
+      final r = settleMonth(
+        groupBudgets: {CategoryGroup.food: 1000, CategoryGroup.living: 5000},
+        totalBudget: 20000,
+        actualByGroup: {CategoryGroup.food: 2000},
+        threshold: 0.2,
+        rates: rates,
+      );
+      expect(r.budgetCrit, isFalse);
     });
 
     test('超過半數類別超支 → 當月無 PT', () {

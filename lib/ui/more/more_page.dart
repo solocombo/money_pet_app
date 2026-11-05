@@ -9,6 +9,17 @@ import 'assets_page.dart';
 import 'bills_page.dart';
 import 'settings_page.dart';
 
+/// 隱私權政策摘要（完整版見 docs/privacy.md，上架時以 GitHub Pages 公開）。
+const String privacySummary = '''• 你的所有資料只存在這支手機裡，並以 SQLCipher 加密。開發者沒有伺服器，也看不到你的資料。
+
+• 提醒使用手機的本地通知，不經過任何伺服器。
+
+• 「匯出備份」產生的檔案只會送到你自己選擇的地方。備份檔未加密，請妥善保管。
+
+• 目前不使用任何分析、廣告或追蹤服務。未來加入 Google Drive 備份、推播公告或自願觀看的廣告時，會先更新本政策。
+
+• 「設定 → 清除所有資料」或解除安裝 APP，即可永久刪除所有資料。''';
+
 class MorePage extends ConsumerWidget {
   const MorePage({super.key});
 
@@ -76,6 +87,19 @@ class MorePage extends ConsumerWidget {
                   await runAction(context, ref, (s) => s.pets.rename(n));
                 }
               },
+            ),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('隱私權政策'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (c) => AlertDialog(
+                  title: const Text('隱私權政策'),
+                  content: const SingleChildScrollView(child: Text(privacySummary)),
+                  actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('關閉'))],
+                ),
+              ),
             ),
             const AboutListTile(
               icon: Icon(Icons.info_outline),
